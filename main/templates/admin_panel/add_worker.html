@@ -1,0 +1,299 @@
+{% extends 'base.html' %}
+
+{% block title %}Ishchi qo'shish{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card animate__animated animate__fadeInUp">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="fas fa-user-plus"></i> Yangi ishchi qo'shish</h4>
+            </div>
+            <div class="card-body">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    
+                    <!-- Asosiy ma'lumotlar -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.full_name.id_for_label }}" class="form-label">To'liq ismi</label>
+                            {{ form.full_name }}
+                            {% if form.full_name.errors %}
+                                <div class="text-danger">{{ form.full_name.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="{{ form.username.id_for_label }}" class="form-label">Login</label>
+                            {{ form.username }}
+                            {% if form.username.errors %}
+                                <div class="text-danger">{{ form.username.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="{{ form.password.id_for_label }}" class="form-label">Parol</label>
+                            {{ form.password }}
+                            {% if form.password.errors %}
+                                <div class="text-danger">{{ form.password.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Foiz va jarimalar -->
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="{{ form.salary_percent.id_for_label }}" class="form-label">Oylik foizi (%)</label>
+                            {{ form.salary_percent }}
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="{{ form.late_fine.id_for_label }}" class="form-label">10 min kechiksa jarima (so'm)</label>
+                            {{ form.late_fine }}
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="{{ form.overtime_bonus.id_for_label }}" class="form-label">1 soat qo'shimcha bonus (so'm)</label>
+                            {{ form.overtime_bonus }}
+                        </div>
+                    </div>
+
+                    <!-- Ish kunlari checkboxlari (belgilangan kunlar ish kuni) -->
+                    <h5 class="mt-4 mb-3">Ish kunlari (belgilangan kunlar ish kuni hisoblanadi)</h5>
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <div class="form-check">
+                                {{ form.monday_working }}
+                                <label class="form-check-label" for="{{ form.monday_working.id_for_label }}">
+                                    Dushanba
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check">
+                                {{ form.tuesday_working }}
+                                <label class="form-check-label" for="{{ form.tuesday_working.id_for_label }}">
+                                    Seshanba
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check">
+                                {{ form.wednesday_working }}
+                                <label class="form-check-label" for="{{ form.wednesday_working.id_for_label }}">
+                                    Chorshanba
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check">
+                                {{ form.thursday_working }}
+                                <label class="form-check-label" for="{{ form.thursday_working.id_for_label }}">
+                                    Payshanba
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check">
+                                {{ form.friday_working }}
+                                <label class="form-check-label" for="{{ form.friday_working.id_for_label }}">
+                                    Juma
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check">
+                                {{ form.saturday_working }}
+                                <label class="form-check-label" for="{{ form.saturday_working.id_for_label }}">
+                                    Shanba
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check">
+                                {{ form.sunday_working }}
+                                <label class="form-check-label" for="{{ form.sunday_working.id_for_label }}">
+                                    Yakshanba
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Haftalik ish vaqtlari (accordion) -->
+                    <div class="accordion" id="workTimeAccordion">
+                        <!-- Dushanba -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingMon">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMon">
+                                    Dushanba ish vaqti
+                                </button>
+                            </h2>
+                            <div id="collapseMon" class="accordion-collapse collapse" data-bs-parent="#workTimeAccordion">
+                                <div class="accordion-body">
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <label for="{{ form.monday_start.id_for_label }}">Boshlanish</label>
+                                            {{ form.monday_start }}
+                                        </div>
+                                        <div class="col-6">
+                                            <label for="{{ form.monday_end.id_for_label }}">Tugash</label>
+                                            {{ form.monday_end }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Seshanba -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingTue">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTue">
+                                    Seshanba ish vaqti
+                                </button>
+                            </h2>
+                            <div id="collapseTue" class="accordion-collapse collapse" data-bs-parent="#workTimeAccordion">
+                                <div class="accordion-body">
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <label for="{{ form.tuesday_start.id_for_label }}">Boshlanish</label>
+                                            {{ form.tuesday_start }}
+                                        </div>
+                                        <div class="col-6">
+                                            <label for="{{ form.tuesday_end.id_for_label }}">Tugash</label>
+                                            {{ form.tuesday_end }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Chorshanba -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingWed">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseWed">
+                                    Chorshanba ish vaqti
+                                </button>
+                            </h2>
+                            <div id="collapseWed" class="accordion-collapse collapse" data-bs-parent="#workTimeAccordion">
+                                <div class="accordion-body">
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <label for="{{ form.wednesday_start.id_for_label }}">Boshlanish</label>
+                                            {{ form.wednesday_start }}
+                                        </div>
+                                        <div class="col-6">
+                                            <label for="{{ form.wednesday_end.id_for_label }}">Tugash</label>
+                                            {{ form.wednesday_end }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Payshanba -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingThu">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThu">
+                                    Payshanba ish vaqti
+                                </button>
+                            </h2>
+                            <div id="collapseThu" class="accordion-collapse collapse" data-bs-parent="#workTimeAccordion">
+                                <div class="accordion-body">
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <label for="{{ form.thursday_start.id_for_label }}">Boshlanish</label>
+                                            {{ form.thursday_start }}
+                                        </div>
+                                        <div class="col-6">
+                                            <label for="{{ form.thursday_end.id_for_label }}">Tugash</label>
+                                            {{ form.thursday_end }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Juma -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingFri">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFri">
+                                    Juma ish vaqti
+                                </button>
+                            </h2>
+                            <div id="collapseFri" class="accordion-collapse collapse" data-bs-parent="#workTimeAccordion">
+                                <div class="accordion-body">
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <label for="{{ form.friday_start.id_for_label }}">Boshlanish</label>
+                                            {{ form.friday_start }}
+                                        </div>
+                                        <div class="col-6">
+                                            <label for="{{ form.friday_end.id_for_label }}">Tugash</label>
+                                            {{ form.friday_end }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Shanba -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingSat">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSat">
+                                    Shanba ish vaqti
+                                </button>
+                            </h2>
+                            <div id="collapseSat" class="accordion-collapse collapse" data-bs-parent="#workTimeAccordion">
+                                <div class="accordion-body">
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <label for="{{ form.saturday_start.id_for_label }}">Boshlanish</label>
+                                            {{ form.saturday_start }}
+                                        </div>
+                                        <div class="col-6">
+                                            <label for="{{ form.saturday_end.id_for_label }}">Tugash</label>
+                                            {{ form.saturday_end }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Yakshanba -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingSun">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSun">
+                                    Yakshanba ish vaqti
+                                </button>
+                            </h2>
+                            <div id="collapseSun" class="accordion-collapse collapse" data-bs-parent="#workTimeAccordion">
+                                <div class="accordion-body">
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <label for="{{ form.sunday_start.id_for_label }}">Boshlanish</label>
+                                            {{ form.sunday_start }}
+                                        </div>
+                                        <div class="col-6">
+                                            <label for="{{ form.sunday_end.id_for_label }}">Tugash</label>
+                                            {{ form.sunday_end }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Saqlash
+                        </button>
+                        <a href="{% url 'admin_dashboard' %}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Bekor qilish
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+{% endblock %}
+
+
+
+
+.form-check-label:hover {
+    color: #d32f2f;
+    cursor: pointer;
+}

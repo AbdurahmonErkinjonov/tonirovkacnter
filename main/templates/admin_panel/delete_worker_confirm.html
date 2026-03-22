@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block title %}Ishchini o'chirish{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card border-danger animate__animated animate__fadeInUp">
+            <div class="card-header bg-danger text-white">
+                <h4 class="mb-0"><i class="fas fa-exclamation-triangle"></i> Ishchini o'chirish</h4>
+            </div>
+            <div class="card-body">
+                <p class="lead">Siz rostdan ham <strong>{{ worker.full_name }}</strong> ishchini o'chirmoqchimisiz?</p>
+                <p class="text-muted">Bu amalni ortga qaytarib bo'lmaydi. Ishchining barcha ma'lumotlari (ish vaqtlari, bajarilgan ishlar, bonuslar, to'lovlar) ham o'chib ketadi.</p>
+                
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'workers_list' %}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Bekor qilish
+                        </a>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash"></i> Ha, o'chirish
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

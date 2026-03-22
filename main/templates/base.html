@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tonirovka Center - {% block title %}{% endblock %}</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Animate.css -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <!-- Toastr CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
+    <!-- AOS Animation -->
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    
+    {% load static %}
+    <style>
+        :root {
+            --primary: #d32f2f;
+            --primary-dark: #b71c1c;
+            --primary-light: #ef5350;
+            --secondary: #1e1e2f;
+            --dark: #0a0a0f;
+            --light: #f8f9fa;
+            --gray: #6c757d;
+            --success: #28a745;
+            --warning: #ffc107;
+            --info: #17a2b8;
+            --danger: #dc3545;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 100%);
+            font-family: 'Poppins', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            color: var(--light);
+            overflow-x: hidden;
+        }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: var(--dark);
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-light);
+        }
+        
+        /* Navbar */
+        .navbar {
+            background: rgba(10, 10, 15, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(211, 47, 47, 0.3);
+            padding: 1rem 0;
+            transition: all 0.3s ease;
+        }
+        
+        .navbar-brand {
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .navbar-brand img {
+            height: 45px;
+            transition: transform 0.3s ease;
+        }
+        
+        .navbar-brand:hover img {
+            transform: scale(1.1) rotate(5deg);
+        }
+        
+        .navbar-brand span {
+            background: linear-gradient(135deg, var(--primary-light), var(--primary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
+        .navbar-brand::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--primary), var(--primary-light));
+            transition: width 0.3s ease;
+        }
+        
+        .navbar-brand:hover::after {
+            width: 100%;
+        }
+        
+        .nav-link {
+            position: relative;
+            padding: 0.5rem 1rem;
+            margin: 0 0.2rem;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            color: var(--light);
+        }
+        
+        .nav-link:hover {
+            background: rgba(211, 47, 47, 0.2);
+            transform: translateY(-2px);
+        }
+        
+        .nav-link::before {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 0;
+            height: 2px;
+            background: var(--primary);
+            transform: translateX(-50%);
+            transition: width 0.3s ease;
+        }
+        
+        .nav-link:hover::before {
+            width: 80%;
+        }
+        
+        /* Cards */
+        .card {
+            background: rgba(30, 30, 47, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(211, 47, 47, 0.2);
+            border-radius: 20px;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            overflow: hidden;
+        }
+        
+        .card:hover {
+            transform: translateY(-10px);
+            border-color: var(--primary);
+            box-shadow: 0 20px 40px rgba(211, 47, 47, 0.3);
+        }
+        
+        .card-header {
+            background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+            border: none;
+            padding: 1.2rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+        
+        /* Buttons */
+        .btn {
+            border-radius: 12px;
+            padding: 12px 28px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            border: none;
+        }
+        
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+        
+        .btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(211, 47, 47, 0.4);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #28a745, #1e7e34);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #dc3545, #bd2130);
+        }
+        
+        .btn-warning {
+            background: linear-gradient(135deg, #ffc107, #e0a800);
+            color: var(--dark);
+        }
+        
+        .btn-info {
+            background: linear-gradient(135deg, #17a2b8, #117a8b);
+        }
+        
+        /* Stat Cards */
+        .stat-card {
+            background: linear-gradient(135deg, rgba(30, 30, 47, 0.9), rgba(10, 10, 15, 0.9));
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 1.5rem;
+            text-align: center;
+            border: 1px solid rgba(211, 47, 47, 0.3);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(211, 47, 47, 0.1), transparent);
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        
+        .stat-card:hover::before {
+            opacity: 1;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+        }
+        
+        .stat-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary-light), var(--primary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--gray);
+        }
+        
+        /* Tables */
+        .table {
+            background: rgba(30, 30, 47, 0.6);
+            border-radius: 20px;
+            overflow: hidden;
+        }
+        
+        .table thead th {
+            background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+            color: white;
+            border: none;
+            padding: 1rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .table tbody tr {
+            transition: all 0.3s ease;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .table tbody tr:hover {
+            background: rgba(211, 47, 47, 0.1);
+            transform: scale(1.01);
+        }
+        
+        .table td {
+            padding: 1rem;
+            vertical-align: middle;
+            color: var(--light);
+        }
+        
+        /* Forms */
+        .form-control, .form-select {
+            background: rgba(30, 30, 47, 0.8);
+            border: 2px solid rgba(211, 47, 47, 0.3);
+            border-radius: 12px;
+            padding: 12px 15px;
+            color: var(--light);
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            background: rgba(30, 30, 47, 1);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.2);
+            color: var(--light);
+            transform: translateY(-2px);
+        }
+        
+        .form-label {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--primary-light);
+            letter-spacing: 0.5px;
+        }
+        
+        /* Alerts */
+        .alert {
+            border-radius: 15px;
+            border: none;
+            padding: 1rem 1.5rem;
+            animation: slideIn 0.5s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        /* Footer */
+        .footer {
+            background: rgba(10, 10, 15, 0.95);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(211, 47, 47, 0.3);
+            margin-top: auto;
+        }
+        
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .fade-in-up {
+            animation: fadeInUp 0.6s ease-out;
+        }
+        
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 5px rgba(211, 47, 47, 0.5); }
+            50% { box-shadow: 0 0 20px rgba(211, 47, 47, 0.8); }
+        }
+        
+        .glow-animation {
+            animation: glow 2s ease-in-out infinite;
+        }
+        
+        /* Spinner */
+        .spinner {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(211, 47, 47, 0.3);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            z-index: 9999;
+        }
+        
+        @keyframes spin {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .navbar-brand span {
+                display: none;
+            }
+            
+            .stat-value {
+                font-size: 1.5rem;
+            }
+            
+            .btn {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+            
+            .card-body {
+                padding: 1rem;
+            }
+        }
+        
+        /* Loading Animation */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 10, 15, 0.9);
+            z-index: 9998;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(5px);
+        }
+        
+        .loading-text {
+            color: var(--primary);
+            font-size: 1.2rem;
+            margin-top: 20px;
+            letter-spacing: 2px;
+        }
+        
+        /* Badge */
+        .badge {
+            padding: 0.5rem 1rem;
+            border-radius: 10px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        
+        .badge-success {
+            background: linear-gradient(135deg, #28a745, #1e7e34);
+        }
+        
+        .badge-danger {
+            background: linear-gradient(135deg, #dc3545, #bd2130);
+        }
+        
+        .badge-warning {
+            background: linear-gradient(135deg, #ffc107, #e0a800);
+            color: var(--dark);
+        }
+        
+        .badge-info {
+            background: linear-gradient(135deg, #17a2b8, #117a8b);
+        }
+
+
+        
+    </style>
+    
+    {% block extra_css %}{% endblock %}
+
+    <style>
+
+</style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
+        <div class="container">
+            <a class="navbar-brand animate__animated animate__fadeInLeft" href="{% url 'login' %}">
+                <img src="/media/logo.jpg" alt="Logo" onerror="this.src='https://via.placeholder.com/45x45?text=TC'">
+                <span>Tonirovka Center</span>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    {% if user.is_authenticated %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-user-circle"></i>
+                                {% if user.is_staff %}
+                                    Admin: {{ user.username }}
+                                {% else %}
+                                    {{ user.worker.full_name }}
+                                {% endif %}
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end animate__animated animate__fadeIn">
+                                <li><span class="dropdown-item-text text-muted">
+                                    <i class="fas fa-id-card"></i> 
+                                    {% if user.is_staff %}Admin panel{% else %}Ishchi panel{% endif %}
+                                </span></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger" href="{% url 'logout' %}">
+                                    <i class="fas fa-sign-out-alt"></i> Chiqish
+                                </a></li>
+                            </ul>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'login' %}">
+                                <i class="fas fa-sign-in-alt"></i> Kirish
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container my-4">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show animate__animated animate__fadeInDown" role="alert">
+                    <i class="fas fa-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' %}exclamation-circle{% elif message.tags == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+        
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer mt-auto py-4">
+        <div class="container text-center">
+            <div class="row">
+                <div class="col-12">
+                    <span class="text-muted">
+                        <i class="fas fa-copyright"></i> {{ current_year }} Tonirovka Center. 
+                        Barcha huquqlar himoyalangan.
+                    </span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    
+    <script>
+        // AOS Initialization
+        AOS.init({
+            duration: 1000,
+            once: true,
+            offset: 100
+        });
+        
+        // Toastr Configuration
+        toastr.options = {
+            "closeButton": true,
+            "progressBar": true,
+            "positionClass": "toast-top-right",
+            "timeOut": "5000",
+            "showEasing": "swing",
+            "hideEasing": "linear",
+            "showMethod": "fadeIn",
+            "hideMethod": "fadeOut"
+        };
+        
+        // Loading Functions
+        function showLoading() {
+            const overlay = document.createElement('div');
+            overlay.className = 'loading-overlay';
+            overlay.id = 'loading-overlay';
+            overlay.innerHTML = `
+                <div class="text-center">
+                    <div class="spinner"></div>
+                    <div class="loading-text mt-3">Yuklanmoqda...</div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+        }
+        
+        function hideLoading() {
+            const overlay = document.getElementById('loading-overlay');
+            if (overlay) overlay.remove();
+        }
+        
+        // Add animation to cards
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.card').forEach((card, index) => {
+                card.classList.add('animate__animated', 'animate__fadeInUp');
+                card.style.animationDelay = (index * 0.1) + 's';
+            });
+            
+            // Add hover effect to table rows
+            document.querySelectorAll('table tbody tr').forEach(row => {
+                row.addEventListener('mouseenter', function() {
+                    this.style.transform = 'scale(1.01)';
+                    this.style.transition = 'all 0.3s ease';
+                });
+                row.addEventListener('mouseleave', function() {
+                    this.style.transform = 'scale(1)';
+                });
+            });
+        });
+        
+        // Auto hide alerts
+        setTimeout(function() {
+            document.querySelectorAll('.alert').forEach(alert => {
+                alert.classList.remove('show');
+                setTimeout(() => alert.remove(), 500);
+            });
+        }, 5000);
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+    <style>
+    /* Hafta kunlari yozuvi rangini o'zgartirish */
+    .form-check-label {
+        color: #ff0707 !important;  /* Sariq rang */
+        font-weight: 500;
+        transition: color 0.3s ease;
+    }
+    
+    /* Hover qilganda rang o'zgarishi */
+    .form-check-label:hover {
+        color: #b64d4d !important;  /* Qizil rang */
+        transform: translateX(3px);
+    }
+
+        .action-btn {
+        font-size: 15px;
+        padding: 10px 5px;
+        white-space: nowrap;
+    }
+    
+    @media (max-width: 992px) {
+        .action-btn {
+            font-size: 15px;
+            padding: 8px 3px;
+        }
+    }
+    
+</style>
+</body>
+</html>
+
+
+
+
+
+    .action-btn {
+        font-size: 12px;
+        padding: 10px 5px;
+        white-space: nowrap;
+    }
+    
+    @media (max-width: 992px) {
+        .action-btn {
+            font-size: 10px;
+            padding: 8px 3px;
+        }
+    }

@@ -1,0 +1,149 @@
+{% extends 'base.html' %}
+
+{% block title %}Hisobotlar{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2 class="text-white"><i class="fas fa-chart-bar"></i> Hisobotlar</h2>
+    </div>
+</div>
+
+<!-- Filter form -->
+<div class="row mb-4" data-aos="fade-down">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-filter"></i> Filtrlar</h5>
+            </div>
+            <div class="card-body">
+                <form method="get" class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Yil</label>
+                        <select name="year" class="form-control">
+                            {% for y in years %}
+                                <option value="{{ y }}" {% if year == y %}selected{% endif %}>{{ y }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Oy</label>
+                        <select name="month" class="form-control">
+                            {% for m_num, m_name in months %}
+                                <option value="{{ m_num }}" {% if month == m_num %}selected{% endif %}>{{ m_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Ishchi</label>
+                        <select name="worker" class="form-control">
+                            <option value="">Hammasi</option>
+                            {% for worker in workers %}
+                                <option value="{{ worker.id }}" {% if request.GET.worker == worker.id|stringformat:"i" %}selected{% endif %}>
+                                    {{ worker.full_name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-search"></i> Filtrlash
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics -->
+<div class="row mb-4">
+    <div class="col-md-6" data-aos="fade-up" data-aos-delay="100">
+        <div class="card stat-card">
+            <div class="card-body text-center">
+                <div class="stat-icon text-success">
+                    <i class="fas fa-money-bill-wave fa-3x"></i>
+                </div>
+                <h3 class="stat-value">{{ total_income|floatformat:0 }} so'm</h3>
+                <p class="stat-label">{{ month_name }} {{ year }} - Umumiy daromad</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6" data-aos="fade-up" data-aos-delay="200">
+        <div class="card stat-card">
+            <div class="card-body text-center">
+                <div class="stat-icon text-primary">
+                    <i class="fas fa-hand-holding-usd fa-3x"></i>
+                </div>
+                <h3 class="stat-value">{{ total_share|floatformat:0 }} so'm</h3>
+                <p class="stat-label">{{ month_name }} {{ year }} - Ishchilarga to'langan</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Works table -->
+<div class="row" data-aos="fade-up">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="fas fa-list"></i> {{ month_name }} {{ year }} oyidagi ishlar</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Sana</th>
+                                <th>Ishchi</th>
+                                <th>Ish turi</th>
+                                <th>Qismlar</th>
+                                <th>Umumiy summa</th>
+                                <th>Ishchi ulushi</th>
+                                <th>Tasdiqlangan</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for work in works %}
+                            <tr class="animate__animated animate__fadeIn">
+                                <td>{{ work.date|date:"d.m.Y" }}</td>
+                                <td>{{ work.worker.full_name }}</td>
+                                <td>{{ work.get_work_type_display }}</td>
+                                <td>
+                                    {% if work.selected_parts %}
+                                        <small>
+                                        {% for part in work.selected_parts %}
+                                            {{ part.name }}: {{ part.count }} dona<br>
+                                        {% endfor %}
+                                        </small>
+                                    {% elif work.meters_used %}
+                                        {{ work.meters_used }} metr
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td class="text-primary">{{ work.total_price|floatformat:0 }} so'm</td>
+                                <td class="text-success">{{ work.worker_share|floatformat:0 }} so'm</td>
+                                <td>
+                                    {% if work.is_confirmed %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check"></i> {{ work.confirmed_at|date:"d.m.Y H:i" }}
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-warning">Kutilmoqda</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center">Bu oyda ma'lumot yo'q</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

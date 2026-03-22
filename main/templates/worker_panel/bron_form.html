@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+
+{% block title %}Bron ishi qo'shish{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card animate__animated animate__fadeInUp">
+            <div class="card-header bg-dark text-white">
+                <h4 class="mb-0"><i class="fas fa-lock"></i> Bron ishi qo'shish</h4>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <!-- Ishchi tanlash -->
+                    <div class="mb-3">
+                        <label for="{{ form.worker.id_for_label }}" class="form-label">Ishchi</label>
+                        {{ form.worker }}
+                    </div>
+                    
+                    <!-- Bron plyonka -->
+                    <div class="mb-3">
+                        <label for="{{ form.protective_film.id_for_label }}" class="form-label">Bron plyonka</label>
+                        {{ form.protective_film }}
+                    </div>
+                    
+                    <!-- Mashina nomi -->
+                    <div class="mb-3">
+                        <label for="{{ form.car_name.id_for_label }}" class="form-label">Mashina nomi</label>
+                        {{ form.car_name }}
+                    </div>
+                    
+                    <!-- Ketgan metr -->
+                    <div class="mb-3">
+                        <label for="{{ form.meters_used.id_for_label }}" class="form-label">Ketgan metr</label>
+                        {{ form.meters_used }}
+                    </div>
+                    
+    
+                    
+                    <!-- YANGI: QAYERLARINI QILGANI TEXT SHAKLIDA -->
+                    <div class="mb-3 mt-4">
+                        <label for="done_parts_text" class="form-label">Qayerlarini qilgani (matn shaklida yozing)</label>
+                        <textarea name="done_parts_text" id="done_parts_text" class="form-control" rows="4" placeholder="Misol: Orqa eshik, oldi eshik, kapot..."></textarea>
+                        <small class="text-muted">Qaysi qismlarni qilganingizni yozing</small>
+                    </div>
+                    
+                    <div class="alert alert-success mt-3">
+                        <i class="fas fa-check-circle"></i>
+                        Bron ishi avtomatik tasdiqlanadi.
+                    </div>
+                    
+                    <div class="text-end">
+                        <a href="{% url 'work_done' %}" class="btn btn-secondary">Bekor qilish</a>
+                        <button type="submit" class="btn btn-dark">Saqlash</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        const meters = form.querySelector('[name="meters_used"]').value;
+        if (!meters || parseFloat(meters) <= 0) {
+            e.preventDefault();
+            alert("Ketgan metrni kiriting!");
+        }
+    });
+});
+</script>
+{% endblock %}

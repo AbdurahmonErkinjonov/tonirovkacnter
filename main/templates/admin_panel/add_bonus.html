@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+
+{% block title %}Bonus berish{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card animate__animated animate__fadeInUp">
+            <div class="card-header bg-danger text-white">
+                <h4 class="mb-0"><i class="fas fa-gift"></i> Bonus berish</h4>
+            </div>
+            <div class="card-body">
+                <form method="post" class="needs-validation" novalidate>
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Ishchi</label>
+                        {{ form.worker }}
+                        {% if form.worker.errors %}
+                            <div class="text-danger">{{ form.worker.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Bonus miqdori (so'm)</label>
+                        {{ form.amount }}
+                        {% if form.amount.errors %}
+                            <div class="text-danger">{{ form.amount.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Sabab (ixtiyoriy)</label>
+                        {{ form.reason }}
+                        {% if form.reason.errors %}
+                            <div class="text-danger">{{ form.reason.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="text-end">
+                        <a href="{% url 'admin_dashboard' %}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Bekor qilish
+                        </a>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-gift"></i> Bonus berish
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

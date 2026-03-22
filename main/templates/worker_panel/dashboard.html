@@ -1,0 +1,319 @@
+{% extends 'base.html' %}
+
+{% block title %}Ishchi Paneli{% endblock %}
+
+{% block content %}
+<div class="row mb-4" data-aos="fade-down">
+    <div class="col-12">
+        <div class="card bg-gradient">
+            <div class="card-body text-center py-4">
+                <h2 class="text-white mb-0">
+                    <i class="fas fa-user-tie"></i> Xush kelibsiz, {{ worker.full_name }}!
+                </h2>
+                <p class="text-white-50 mt-2 mb-0">
+                    <i class="fas fa-calendar-alt"></i> {{ current_date|default:today|date:"d-m-Y" }}
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="row mb-4">
+    <div class="col-md-4" data-aos="fade-up" data-aos-delay="100">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-exclamation-triangle text-danger"></i>
+            </div>
+            <div class="stat-value">{{ month_fines|floatformat:0 }} so'm</div>
+            <div class="stat-label">Jarimalar</div>
+        </div>
+    </div>
+    <div class="col-md-4" data-aos="fade-up" data-aos-delay="200">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-gift text-success"></i>
+            </div>
+            <div class="stat-value">{{ month_bonuses|floatformat:0 }} so'm</div>
+            <div class="stat-label">Bonuslar</div>
+        </div>
+    </div>
+    <div class="col-md-4" data-aos="fade-up" data-aos-delay="300">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-wallet text-primary"></i>
+            </div>
+            <div class="stat-value">{{ net_salary|floatformat:0 }} so'm</div>
+            <div class="stat-label">Sof oylik</div>
+        </div>
+    </div>
+</div>
+
+<!-- Debt Alert -->
+{% if remaining_debt > 0 %}
+<div class="row mb-4" data-aos="fade-up">
+    <div class="col-12">
+        <div class="alert alert-warning">
+            <i class="fas fa-exclamation-circle me-2"></i>
+            Sizning qarzingiz: <strong>{{ remaining_debt|floatformat:0 }} so'm</strong>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Holiday Alert -->
+{% if is_holiday %}
+<div class="row mb-4" data-aos="fade-up">
+    <div class="col-12">
+        <div class="alert alert-info">
+            <i class="fas fa-calendar-day me-2"></i>
+            Bugun dam olish kuni! Kelish va ketish tugmalari ishlamaydi.
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Main Buttons -->
+<div class="row mb-4">
+    <div class="col-md-6" data-aos="fade-right" data-aos-delay="100">
+        <div class="card text-center h-100">
+            <div class="card-body p-4">
+                {% if not is_holiday %}
+                    {% if not today_session %}
+                        <button class="btn btn-success btn-lg w-100 pulse-animation" onclick="checkIn()">
+                            <i class="fas fa-sign-in-alt"></i> KELDIM
+                        </button>
+                    {% elif not today_session.check_out %}
+                        <button class="btn btn-danger btn-lg w-100" onclick="checkOut()">
+                            <i class="fas fa-sign-out-alt"></i> KETYAPMAN
+                        </button>
+                    {% else %}
+                        <button class="btn btn-secondary btn-lg w-100" disabled>
+                            <i class="fas fa-check"></i> Bugun ketdingiz
+                        </button>
+                    {% endif %}
+                {% else %}
+                    <button class="btn btn-secondary btn-lg w-100" disabled>
+                        <i class="fas fa-ban"></i> Dam olish kuni
+                    </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6" data-aos="fade-left" data-aos-delay="200">
+        <div class="card text-center h-100">
+            <div class="card-body p-4">
+                <a href="{% url 'work_done' %}" class="btn btn-primary btn-lg w-100">
+                    <i class="fas fa-tools"></i> ISH QILDIM
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Works -->
+<div class="row" data-aos="fade-up">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-history me-2"></i> OXIRGI ISHLARINGIZ</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Sana</th>
+                                <th>Ish turi</th>
+                                <th>Mashina</th>
+                                <th>Qismlar</th>
+                                <th>Umumiy summa</th>
+                                <th>Sizning ulushingiz</th>
+                                <th>Holati</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for work in recent_works %}
+                            <tr>
+                                <td>{{ work.date|date:"d.m.Y" }}</td>
+                                <td><span class="badge bg-info">{{ work.get_work_type_display }}</span></td>
+                                <td>{{ work.car_name|default:"-" }}</td>
+                                <td>
+                                    {% if work.selected_parts %}
+                                        <small>
+                                        {% for part in work.selected_parts|slice:":3" %}
+                                            {% if part.name %}
+                                                {{ part.name }}: {{ part.count|default:part.uvol|default:part.done|default:"-" }}<br>
+                                            {% endif %}
+                                        {% endfor %}
+                                        {% if work.selected_parts|length > 3 %}
+                                            <span class="text-muted">...</span>
+                                        {% endif %}
+                                        </small>
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td class="text-primary">{{ work.total_price|floatformat:0 }} so'm</td>
+                                <td class="text-success">{{ work.worker_share|floatformat:0 }} so'm</td>
+                                <td>
+                                    {% if work.is_confirmed %}
+                                        <span class="badge badge-success"><i class="fas fa-check"></i> Tasdiqlangan</span>
+                                    {% else %}
+                                        <span class="badge badge-warning"><i class="fas fa-clock"></i> Kutilmoqda</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center py-4">
+                                    <i class="fas fa-folder-open fa-2x text-muted mb-2 d-block"></i>
+                                    Hozircha ishlar yo'q
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Kelajakdagi dam olish kunlari -->
+{% if future_holidays %}
+<div class="row mt-4" data-aos="fade-up">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0">
+                    <i class="fas fa-calendar-day me-2"></i> 
+                    Kelajakdagi dam olish kunlari
+                    <span class="badge bg-dark ms-2">{{ future_holidays|length }} ta</span>
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for holiday in future_holidays %}
+                    <div class="col-md-2 col-sm-3 col-6 mb-2">
+                        <div class="p-2 bg-light rounded text-center">
+                            <i class="fas fa-calendar-alt text-warning mb-1 d-block"></i>
+                            <strong>{{ holiday.date|date:"d-m-Y" }}</strong>
+                            {% if holiday.name %}
+                            <div class="small text-muted">{{ holiday.name }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Location Check Script -->
+<script>
+function getLocation() {
+    return new Promise((resolve, reject) => {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            });
+        } else {
+            reject(new Error("Geolocation qo'llab-quvvatlanmaydi"));
+        }
+    });
+}
+
+async function checkIn() {
+    showLoading();
+    try {
+        const position = await getLocation();
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = "{% url 'check_in' %}";
+        
+        const csrf = document.createElement('input');
+        csrf.name = 'csrfmiddlewaretoken';
+        csrf.value = '{{ csrf_token }}';
+        form.appendChild(csrf);
+        
+        const latInput = document.createElement('input');
+        latInput.name = 'lat';
+        latInput.value = lat;
+        form.appendChild(latInput);
+        
+        const lngInput = document.createElement('input');
+        lngInput.name = 'lng';
+        lngInput.value = lng;
+        form.appendChild(lngInput);
+        
+        document.body.appendChild(form);
+        form.submit();
+    } catch (error) {
+        hideLoading();
+        let message = "Lokatsiyani aniqlab bo'lmadi: ";
+        if (error.code === 1) {
+            message += "Siz geolokatsiya ruxsatini bermadingiz. Brauzer sozlamalaridan ruxsat bering.";
+        } else {
+            message += error.message;
+        }
+        toastr.error(message);
+    }
+}
+
+async function checkOut() {
+    showLoading();
+    try {
+        const position = await getLocation();
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = "{% url 'check_out' %}";
+        
+        const csrf = document.createElement('input');
+        csrf.name = 'csrfmiddlewaretoken';
+        csrf.value = '{{ csrf_token }}';
+        form.appendChild(csrf);
+        
+        const latInput = document.createElement('input');
+        latInput.name = 'lat';
+        latInput.value = lat;
+        form.appendChild(latInput);
+        
+        const lngInput = document.createElement('input');
+        lngInput.name = 'lng';
+        lngInput.value = lng;
+        form.appendChild(lngInput);
+        
+        document.body.appendChild(form);
+        form.submit();
+    } catch (error) {
+        hideLoading();
+        let message = "Lokatsiyani aniqlab bo'lmadi: ";
+        if (error.code === 1) {
+            message += "Siz geolokatsiya ruxsatini bermadingiz. Brauzer sozlamalaridan ruxsat bering.";
+        } else {
+            message += error.message;
+        }
+        toastr.error(message);
+    }
+}
+
+// Pulse animation
+document.querySelector('.pulse-animation')?.classList.add('animate__animated', 'animate__pulse', 'animate__infinite');
+</script>
+
+
+
+{% endblock %}
+
+

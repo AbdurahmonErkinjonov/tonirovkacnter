@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block title %}Laminatsiya ishi qo'shish{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card animate__animated animate__fadeInUp">
+            <div class="card-header bg-secondary text-white">
+                <h4 class="mb-0"><i class="fas fa-layer-group"></i> Laminatsiya ishi qo'shish</h4>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <!-- Ishchi tanlash -->
+                    <div class="mb-3">
+                        <label for="{{ form.worker.id_for_label }}" class="form-label">Ishchi</label>
+                        {{ form.worker }}
+                        {% if form.worker.errors %}<div class="text-danger">{{ form.worker.errors }}</div>{% endif %}
+                    </div>
+                    
+                    <!-- Laminatsiya plyonkasi -->
+                    <div class="mb-3">
+                        <label for="{{ form.lamination_film.id_for_label }}" class="form-label">Laminatsiya plyonkasi</label>
+                        {{ form.lamination_film }}
+                    </div>
+                    
+                    <!-- Mashina nomi -->
+                    <div class="mb-3">
+                        <label for="{{ form.car_name.id_for_label }}" class="form-label">Mashina nomi</label>
+                        {{ form.car_name }}
+                        {% if form.car_name.errors %}<div class="text-danger">{{ form.car_name.errors }}</div>{% endif %}
+                    </div>
+                    
+                    <!-- Detallar holati -->
+                    <div class="mb-3">
+                        <label for="{{ form.is_detailed.id_for_label }}" class="form-label">Detallar holati</label>
+                        {{ form.is_detailed }}
+                    </div>
+                    
+                    <!-- Ketgan metr -->
+                    <div class="mb-3">
+                        <label for="{{ form.meters_used.id_for_label }}" class="form-label">Ketgan metr</label>
+                        {{ form.meters_used }}
+                        {% if form.meters_used.errors %}<div class="text-danger">{{ form.meters_used.errors }}</div>{% endif %}
+                    </div>
+                    
+                    <div class="alert alert-success mt-3">
+                        <i class="fas fa-check-circle"></i>
+                        Laminatsiya ishi avtomatik tasdiqlanadi va oyligingizga qo‘shiladi.
+                    </div>
+                    
+                    <div class="text-end">
+                        <a href="{% url 'work_done' %}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Bekor qilish
+                        </a>
+                        <button type="submit" class="btn btn-secondary">
+                            <i class="fas fa-save"></i> Saqlash
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        const meters = form.querySelector('[name="meters_used"]').value;
+        if (!meters || parseFloat(meters) <= 0) {
+            e.preventDefault();
+            alert("Ketgan metrni kiriting!");
+        }
+    });
+});
+</script>
+{% endblock %}
