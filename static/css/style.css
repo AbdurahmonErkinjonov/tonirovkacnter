@@ -236,3 +236,7 @@ body {
     box-shadow: 0 0 0 0.2rem rgba(255, 37, 37, 0.25) !important;
 }
 
+.form-check-label:hover {
+    color: #d32f2f;
+    cursor: pointer;
+}

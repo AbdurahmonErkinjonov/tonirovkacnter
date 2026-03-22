@@ -282,12 +282,52 @@ def worker_dashboard(request):
     # Kelajakdagi dam olish kunlari (bugundan keyingi 30 kun)
     future_holidays = Holiday.objects.filter(date__gte=today).order_by('date')[:10]
     
+    # Bugungi seans
+    today_session = WorkSession.objects.filter(worker=worker, check_in__date=today).first()
+    
+    # 3 soatlik bonus tekshirish
+    three_hour_bonus_added = False
+    three_hour_bonus_amount = 0
+    three_hour_bonus_blocks = 0
+    three_hour_added_blocks = 0
+    
+    if today_session and not today_session.check_out and worker.three_hour_bonus_amount > 0:
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        now = timezone.now()
+        check_in = today_session.check_in
+        interval_hours = 3
+        interval_seconds = interval_hours * 3600
+        
+        # Necha interval o'tgan
+        seconds_passed = (now - check_in).total_seconds()
+        current_blocks = today_session.three_hour_bonus_blocks or 0
+        new_blocks = int(seconds_passed // interval_seconds)
+        
+        if new_blocks > current_blocks:
+            add_blocks = new_blocks - current_blocks
+            bonus_amount = worker.three_hour_bonus_amount * add_blocks
+            
+            today_session.three_hour_bonus_blocks = new_blocks
+            today_session.three_hour_total_bonus = (today_session.three_hour_total_bonus or 0) + bonus_amount
+            today_session.last_bonus_check = now
+            today_session.save()
+            
+            worker.total_bonuses += bonus_amount
+            worker.save()
+            
+            three_hour_bonus_added = True
+            three_hour_bonus_amount = bonus_amount
+            three_hour_bonus_blocks = new_blocks
+            three_hour_added_blocks = add_blocks
+    
     context = {
         'worker': worker,
-        'today': today,  # BU QO'SHILDI
+        'today': today,
         'is_holiday': Holiday.objects.filter(date=today).exists(),
         'is_working_day': is_working_day,
-        'today_session': WorkSession.objects.filter(worker=worker, check_in__date=today).first(),
+        'today_session': today_session,
         'month_fines': month_fines,
         'month_bonuses': month_bonuses,
         'net_salary': net_salary,
@@ -296,7 +336,11 @@ def worker_dashboard(request):
             worker=worker, 
             is_confirmed=True
         ).order_by('-confirmed_at')[:10],
-        'future_holidays': future_holidays,  # QO'SHILDI - kelajakdagi dam olish kunlari
+        'future_holidays': future_holidays,
+        'three_hour_bonus_added': three_hour_bonus_added,
+        'three_hour_bonus_amount': three_hour_bonus_amount,
+        'three_hour_bonus_blocks': three_hour_bonus_blocks,
+        'three_hour_added_blocks': three_hour_added_blocks,
     }
     return render(request, 'worker_panel/dashboard.html', context)
 
@@ -342,6 +386,7 @@ def check_in(request):
                 full_blocks = late_minutes // 10
                 fine = worker.late_fine * full_blocks
         
+        # Session yaratish (3 soatlik bonus uchun maydonlar qo'shildi)
         session = WorkSession.objects.create(
             worker=worker,
             check_in=now,
@@ -349,7 +394,10 @@ def check_in(request):
             check_in_lng=lng,
             is_late=(late_minutes >= 10 and is_working_day),
             fine_amount=fine,
-            is_off_day=not is_working_day
+            is_off_day=not is_working_day,
+            three_hour_bonus_blocks=0,      # Yangi qo'shildi
+            three_hour_total_bonus=0,       # Yangi qo'shildi
+            last_bonus_check=now            # Yangi qo'shildi
         )
         
         if fine > 0:
@@ -373,6 +421,8 @@ def check_in(request):
                 messages.success(request, "Keldingiz belgilandi!")
     
     return redirect('worker_dashboard')
+
+
 
 @worker_required
 def check_out(request):
@@ -740,3 +790,38 @@ def delete_worker(request, worker_id):
         messages.success(request, f"{worker.full_name} o'chirildi.")
         return redirect('workers_list')
     return render(request, 'admin_panel/delete_worker_confirm.html', {'worker': worker})
+
+
+
+
+
+def check_three_hour_bonus(worker, session):
+    """3 soatdan keyin bonus qo'shish"""
+    from django.utils import timezone
+    from datetime import timedelta
+    
+    if not session.check_out and worker.three_hour_bonus_amount > 0:
+        now = timezone.now()
+        check_in = session.check_in
+        interval_hours = 3
+        interval_seconds = interval_hours * 3600
+        
+        # Necha interval o'tgan
+        seconds_passed = (now - check_in).total_seconds()
+        current_blocks = session.three_hour_bonus_blocks or 0
+        new_blocks = int(seconds_passed // interval_seconds)
+        
+        if new_blocks > current_blocks:
+            add_blocks = new_blocks - current_blocks
+            bonus_amount = worker.three_hour_bonus_amount * add_blocks
+            
+            session.three_hour_bonus_blocks = new_blocks
+            session.three_hour_total_bonus = (session.three_hour_total_bonus or 0) + bonus_amount
+            session.last_bonus_check = now
+            session.save()
+            
+            worker.total_bonuses += bonus_amount
+            worker.save()
+            
+            return True, bonus_amount, new_blocks, add_blocks
+    return False, 0, 0, 0

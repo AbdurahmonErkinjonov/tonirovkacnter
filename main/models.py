@@ -44,6 +44,17 @@ class Worker(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
+    
+    three_hour_bonus_amount = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        default=0, 
+        verbose_name="3 soatdan keyin bonus (so'm)"
+    )
+    
+    
+
+    
     def __str__(self):
         return self.full_name
     
@@ -162,6 +173,13 @@ class WorkSession(models.Model):
     bonus_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     is_off_day = models.BooleanField(default=False)  # dam olish kunida kelganmi?
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    
+    three_hour_bonus_blocks = models.IntegerField(default=0, verbose_name="3 soatlik bonus bloklari soni")
+    three_hour_total_bonus = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="3 soatlik jami bonus")
+    last_bonus_check = models.DateTimeField(null=True, blank=True, verbose_name="Oxirgi bonus tekshiruvi")
+    
+    
     
     def __str__(self):
         return f"{self.worker.full_name} - {self.check_in.date()}"

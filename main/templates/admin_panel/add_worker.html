@@ -54,6 +54,15 @@
                         </div>
                     </div>
 
+                    <!-- 3 soatlik bonus -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.three_hour_bonus_amount.id_for_label }}" class="form-label">3 soatdan keyin bonus (so'm)</label>
+                            {{ form.three_hour_bonus_amount }}
+                            <div class="form-text">0 bo'lsa bonus qo'shilmaydi</div>
+                        </div>
+                    </div>
+
                     <!-- Ish kunlari checkboxlari (belgilangan kunlar ish kuni) -->
                     <h5 class="mt-4 mb-3">Ish kunlari (belgilangan kunlar ish kuni hisoblanadi)</h5>
                     <div class="row mb-3">
@@ -287,13 +296,11 @@
     </div>
 </div>
 
+<style>
+    .form-check-label:hover {
+        color: #d32f2f;
+        cursor: pointer;
+    }
+</style>
 
 {% endblock %}
-
-
-
-
-.form-check-label:hover {
-    color: #d32f2f;
-    cursor: pointer;
-}

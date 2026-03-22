@@ -37,6 +37,21 @@ class WorkerForm(forms.ModelForm):
             'sunday_start': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
             'sunday_end': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
         }
+        
+        
+        
+        
+    three_hour_bonus_amount = forms.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        required=False, 
+        initial=0,
+        label="3 soatdan keyin bonus (so'm)",
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'})
+)
+        
+        
+        
 
 class WorkerEditForm(forms.ModelForm):
     """Ishchi ma'lumotlarini tahrirlash uchun (parol o'zgartirilmaydi)"""
@@ -47,6 +62,18 @@ class WorkerEditForm(forms.ModelForm):
     friday_working = forms.BooleanField(required=False, label="Juma ish kuni", widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}))
     saturday_working = forms.BooleanField(required=False, label="Shanba ish kuni", widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}))
     sunday_working = forms.BooleanField(required=False, label="Yakshanba ish kuni", widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}))
+    
+    
+    
+    three_hour_bonus_amount = forms.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        required=False, 
+        initial=0,
+        label="3 soatdan keyin bonus (so'm)",
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'})
+)
+    
     
     class Meta:
         model = Worker

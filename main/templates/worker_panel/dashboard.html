@@ -314,6 +314,30 @@ document.querySelector('.pulse-animation')?.classList.add('animate__animated', '
 
 
 
+<!-- 3 soatlik bonus qo'shilgan bo'lsa -->
+{% if three_hour_bonus_added %}
+<div class="alert alert-success animate__animated animate__fadeInUp">
+    <i class="fas fa-gift me-2"></i>
+    <strong>🎉 Bonus!</strong> 
+    {{ three_hour_added_blocks }} marta 3 soat to'ldi! 
+    Bonus: <strong>{{ three_hour_bonus_amount }} so'm</strong> qo'shildi.
+</div>
+{% endif %}
+
+<!-- 3 soatlik bonus haqida eslatma -->
+{% if today_session and not today_session.check_out and worker.three_hour_bonus_amount > 0 %}
+<div class="alert alert-info animate__animated animate__fadeInUp">
+    <i class="fas fa-clock me-2"></i>
+    <strong>Eslatma:</strong> 
+    Har 3 soatda "KETYAPMAN" tugmasini bosmasangiz, 
+    <strong>{{ worker.three_hour_bonus_amount }} so'm</strong> bonus qo'shiladi.
+    Hozir <strong>{{ three_hour_bonus_blocks }}</strong> marta 3 soat to'lgan.
+    {% if today_session.three_hour_total_bonus > 0 %}
+    <br>Jami bonus: <strong class="text-success">{{ today_session.three_hour_total_bonus }} so'm</strong>
+    {% endif %}
+</div>
+{% endif %}
+
 {% endblock %}
 
 
