@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ car.name }} ga ish qo'shish{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card" style="border: 2px solid #dc3545;">
+            <div class="card-header" style="background-color: #dc3545; color: white;">
+                <h4 class="mb-0"><i class="fas fa-car"></i> {{ car.name }} ga ish qo'shish</h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-danger mb-4" style="background-color: #f8d7da; border-color: #f5c6cb;">
+                    <i class="fas fa-info-circle" style="color: #dc3545;"></i>
+                    <strong style="color: #dc3545;">{{ car.name }}</strong> 
+                    <span style="color: #dc3545;">mashinasida <strong>{{ pending_count }}</strong> ta qism qolgan.</span>
+                </div>
+                
+                <form method="post" id="workForm">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label class="form-label" style="color: #dc3545; font-weight: bold;">
+                            <i class="fas fa-user"></i> Ishchi ismi
+                        </label>
+                        <input type="text" name="worker_name" class="form-control" 
+                               style="border: 2px solid #dc3545;" 
+                               placeholder="Ishchining ismini yozing (masalan: Abdurahmon)"
+                               required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label" style="color: #dc3545; font-weight: bold;">
+                            <i class="fas fa-check-square"></i> Qaysi qismlar ishlangan?
+                        </label>
+                        <div style="border: 2px solid #dc3545; border-radius: 5px; padding: 10px;">
+                            {% for part in pending_parts %}
+                            <div class="form-check">
+                                <input type="checkbox" name="selected_parts[]" value="{{ part.id }}" class="form-check-input" id="part_{{ part.id }}">
+                                <label class="form-check-label" for="part_{{ part.id }}" style="color: #dc3545;">
+                                    {{ part.name }}
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div class="form-text" style="color: #dc3545;">
+                            <i class="fas fa-info-circle"></i> Bir nechta qism tanlashingiz mumkin
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label" style="color: #dc3545; font-weight: bold;">
+                            <i class="fas fa-pen-alt"></i> Uvol bolgan joylari
+                        </label>
+                        <textarea name="uvol_text" class="form-control" rows="3" 
+                                  style="border: 2px solid #dc3545;"
+                                  placeholder="Qismlarni vergul bilan ajratib yozing&#10;&#10;Masalan: Orqa eshik, Oldi eshik, Kapot"></textarea>
+                        <div class="form-text" style="color: #dc3545;">
+                            <i class="fas fa-info-circle"></i> Qismlarni vergul (,) bilan ajrating
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-danger mt-3" style="background-color: #f8d7da; border-color: #f5c6cb;">
+                        <i class="fas fa-check-circle" style="color: #dc3545;"></i>
+                        <strong style="color: #dc3545;">Avtomatik tasdiqlash</strong><br>
+                        <small style="color: #dc3545;">Ish avtomatik tasdiqlanadi. Barcha qismlar bajarilgandan keyin mashina ro'yxatdan o'chadi.</small>
+                    </div>
+                    
+                    <div class="text-end mt-4">
+                        <a href="{% url 'work_done' %}" class="btn btn-secondary">Bekor qilish</a>
+                        <button type="submit" class="btn" style="background-color: #dc3545; color: white;">Saqlash</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('workForm').addEventListener('submit', function(e) {
+    const workerName = document.querySelector('input[name="worker_name"]').value.trim();
+    const selectedParts = document.querySelectorAll('input[name="selected_parts[]"]:checked');
+    const uvolText = document.querySelector('textarea[name="uvol_text"]').value.trim();
+    
+    if (!workerName) {
+        e.preventDefault();
+        alert("❌ Ishchi ismini yozing!");
+        return false;
+    }
+    
+    if (selectedParts.length === 0 && uvolText === '') {
+        e.preventDefault();
+        alert("❌ Kamida bitta qismni tanlang yoki uvol joylarini yozing!");
+        return false;
+    }
+});
+</script>
+{% endblock %}

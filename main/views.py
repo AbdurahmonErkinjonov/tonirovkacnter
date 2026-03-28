@@ -9,6 +9,10 @@ import math
 from .models import *
 from .forms import *
 from .decorators import admin_required, worker_required
+from datetime import datetime, timedelta, date
+from django.http import JsonResponse, HttpResponseBadRequest
+from .models import Worker
+
 
 # -------------------- Authentication --------------------
 
@@ -459,9 +463,9 @@ def check_out(request):
         
         if now > work_end and worker.is_working_day(today):
             overtime_minutes = (now - work_end).seconds // 60
-            if overtime_minutes >= 30:
-                full_blocks = overtime_minutes // 30
-                bonus = (full_blocks * worker.overtime_bonus) / 2
+            # FAQAT 1 MARTA, 1 SOATDAN OSHGANDA BONUS QO'SHILADI
+            if overtime_minutes >= 60:
+                bonus = worker.overtime_bonus
             
             session.overtime_minutes = overtime_minutes
             session.bonus_amount = bonus
@@ -474,29 +478,23 @@ def check_out(request):
         
         if bonus > 0:
             hours = overtime_minutes // 60
-            half_hours = (overtime_minutes % 60) // 30
-            msg = f"Ketishingiz belgilandi! Qo'shimcha ish: {overtime_minutes} daqiqa. "
-            if hours > 0:
-                msg += f"{hours} soat "
-            if half_hours > 0:
-                msg += f"{half_hours*30} daqiqa "
-            msg += f"uchun bonus: {bonus} so'm"
+            minutes = overtime_minutes % 60
+            msg = f"Ketishingiz belgilandi! Qo'shimcha ish: {hours} soat {minutes} daqiqa. "
+            msg += f"Bonus: {bonus} so'm"
             messages.success(request, msg)
         else:
             if overtime_minutes > 0:
                 messages.info(
                     request, 
                     f"Ketishingiz belgilandi! {overtime_minutes} daqiqa qo'shimcha ishlagansiz, "
-                    f"lekin 30 daqiqa to'lmagani uchun bonus yo'q."
+                    f"lekin 1 soat to'lmagani uchun bonus yo'q."
                 )
             else:
                 messages.success(request, "Ketishingiz belgilandi!")
     
     return redirect('worker_dashboard')
 
-@worker_required
-def work_done(request):
-    return render(request, 'worker_panel/work_done.html')
+
 
 @worker_required
 def tonirovka_work(request):
@@ -825,3 +823,918 @@ def check_three_hour_bonus(worker, session):
             
             return True, bonus_amount, new_blocks, add_blocks
     return False, 0, 0, 0
+
+
+
+from datetime import datetime, timedelta
+
+@admin_required
+def attendance_list(request):
+    from datetime import datetime, timedelta, date
+    
+    today = date.today()
+    week_start = today - timedelta(days=today.weekday())
+    week_end = week_start + timedelta(days=6)
+    
+    weekdays = ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba', 'Yakshanba']
+    
+    week_dates = []
+    for i in range(7):
+        week_dates.append(week_start + timedelta(days=i))
+    
+    workers = Worker.objects.all()
+    
+    attendance_data = []
+    for worker in workers:
+        worker_data = {
+            'worker': worker,
+            'days': []
+        }
+        for day_date in week_dates:  # 'date' o'rniga 'day_date' ishlatildi
+            session = WorkSession.objects.filter(
+                worker=worker,
+                check_in__date=day_date
+            ).first()
+            worker_data['days'].append({
+                'date': day_date,
+                'weekday': weekdays[day_date.weekday()],
+                'check_in': session.check_in if session else None,
+                'check_out': session.check_out if session else None,
+                'session_id': session.id if session else None,
+                'has_session': session is not None
+            })
+        attendance_data.append(worker_data)
+    
+    context = {
+        'attendance_data': attendance_data,
+        'week_dates': week_dates,
+        'weekdays': weekdays,
+        'week_start': week_start,
+        'week_end': week_end,
+    }
+    return render(request, 'admin_panel/attendance_list.html', context)
+
+@admin_required
+def attendance_edit(request, session_id):
+    """Davomat vaqtini tahrirlash"""
+    session = get_object_or_404(WorkSession, id=session_id)
+    
+    if request.method == 'POST':
+        check_in_date = request.POST.get('check_in_date')
+        check_in_time = request.POST.get('check_in_time')
+        check_out_date = request.POST.get('check_out_date')
+        check_out_time = request.POST.get('check_out_time')
+        
+        # Kelgan vaqtni yangilash
+        if check_in_date and check_in_time:
+            check_in_datetime = datetime.strptime(f"{check_in_date} {check_in_time}", "%Y-%m-%d %H:%M")
+            check_in_datetime = timezone.make_aware(check_in_datetime)
+            session.check_in = check_in_datetime
+        
+        # Ketgan vaqtni yangilash
+        if check_out_date and check_out_time:
+            check_out_datetime = datetime.strptime(f"{check_out_date} {check_out_time}", "%Y-%m-%d %H:%M")
+            check_out_datetime = timezone.make_aware(check_out_datetime)
+            session.check_out = check_out_datetime
+        else:
+            session.check_out = None
+        
+        session.save()
+        messages.success(request, f"{session.worker.full_name} ning davomati yangilandi!")
+        return redirect('attendance_list')
+    
+    context = {
+        'session': session,
+        'worker': session.worker,
+        'check_in': session.check_in,
+        'check_out': session.check_out,
+    }
+    return render(request, 'admin_panel/attendance_edit.html', context)
+
+
+@admin_required
+def attendance_create(request, worker_id, date):
+    """Yangi davomat yaratish (agar ishchi kelmagan bo'lsa)"""
+    worker = get_object_or_404(Worker, id=worker_id)
+    date_obj = datetime.strptime(date, "%Y-%m-%d").date()
+    
+    if request.method == 'POST':
+        check_in_date = request.POST.get('check_in_date')
+        check_in_time = request.POST.get('check_in_time')
+        check_out_date = request.POST.get('check_out_date')
+        check_out_time = request.POST.get('check_out_time')
+        
+        check_in_datetime = None
+        check_out_datetime = None
+        
+        if check_in_date and check_in_time:
+            check_in_datetime = datetime.strptime(f"{check_in_date} {check_in_time}", "%Y-%m-%d %H:%M")
+            check_in_datetime = timezone.make_aware(check_in_datetime)
+        
+        if check_out_date and check_out_time:
+            check_out_datetime = datetime.strptime(f"{check_out_date} {check_out_time}", "%Y-%m-%d %H:%M")
+            check_out_datetime = timezone.make_aware(check_out_datetime)
+        
+        session = WorkSession.objects.create(
+            worker=worker,
+            check_in=check_in_datetime,
+            check_out=check_out_datetime,
+            check_in_lat=0,
+            check_in_lng=0,
+            is_late=False,
+            fine_amount=0,
+            is_off_day=False
+        )
+        
+        messages.success(request, f"{worker.full_name} uchun {date_obj} kuni davomat qo'shildi!")
+        return redirect('attendance_list')
+    
+    context = {
+        'worker': worker,
+        'date': date_obj,
+    }
+    return render(request, 'admin_panel/attendance_create.html', context)
+
+
+
+
+
+@admin_required
+def add_car(request):
+    """Admin panelda mashina qo'shish"""
+    if request.method == 'POST':
+        form = CarForm(request.POST)
+        if form.is_valid():
+            car = form.save()
+            
+            # Standart qismlarni qo'shish
+            part_names = request.POST.getlist('part_name[]')
+            for name in part_names:
+                if name.strip():
+                    CarPart.objects.create(car=car, name=name.strip(), is_default=True)
+            
+            messages.success(request, f"{car.name} mashinasi qo'shildi!")
+            return redirect('cars_list')
+    else:
+        form = CarForm()
+    
+    return render(request, 'admin_panel/add_car.html', {'form': form})
+
+
+@admin_required
+def cars_list(request):
+    """Mashinalar ro'yxati"""
+    cars = Car.objects.all()
+    return render(request, 'admin_panel/cars_list.html', {'cars': cars})
+
+
+@worker_required
+def worker_add_car_work(request, car_id):
+    """Tanlangan mashinaga ish qo'shish (avtomatik tasdiqlanadi)"""
+    from datetime import date
+    from django.utils import timezone
+    from django.contrib.auth.models import User
+    
+    car = get_object_or_404(Car, id=car_id)
+    
+    # Hali bajarilmagan qismlar
+    pending_parts = car.get_pending_parts()
+    
+    if not pending_parts.exists():
+        messages.error(request, f"{car.name} mashinasining barcha qismlari allaqachon bajarilgan!")
+        return redirect('work_done')
+    
+    if request.method == 'POST':
+        worker_name = request.POST.get('worker_name', '').strip()
+        
+        if not worker_name:
+            messages.error(request, "Ishchi ismini yozing!")
+            return redirect('worker_add_car_work', car_id=car_id)
+        
+        # User yaratish (username sifatida ismni olib)
+        username = worker_name.replace(' ', '_').lower()
+        user, user_created = User.objects.get_or_create(
+            username=username,
+            defaults={'password': '123456'}
+        )
+        
+        # Ishchini topish yoki yaratish
+        worker, created = Worker.objects.get_or_create(
+            full_name=worker_name,
+            defaults={
+                'user': user,
+                'salary_percent': 0,
+                'late_fine': 0,
+                'overtime_bonus': 0
+            }
+        )
+        
+        # Agar ishchi mavjud bo'lsa, user'ni yangilash
+        if not created and worker.user is None:
+            worker.user = user
+            worker.save()
+        
+        # Tanlangan qismlar
+        selected_part_ids = request.POST.getlist('selected_parts[]')
+        
+        if not selected_part_ids:
+            messages.error(request, "Kamida bitta qismni tanlang!")
+            return redirect('worker_add_car_work', car_id=car_id)
+        
+        added_count = 0
+        
+        for part_id in selected_part_ids:
+            part = CarPart.objects.get(id=part_id)
+            
+            car_work = CarWork.objects.create(
+                car=car,
+                worker=worker,
+                work_type='other',
+                work_date=date.today(),
+                total_price=0,
+                worker_share=0,
+                is_confirmed=True,
+                confirmed_at=timezone.now()
+            )
+            
+            CarWorkPart.objects.create(
+                car_work=car_work,
+                part=part,
+                count=1
+            )
+            added_count += 1
+        
+        if car.check_completion():
+            messages.success(request, f"✅ {car.name} mashinasining BARCHA qismlari bajarildi!")
+        else:
+            remaining = car.get_pending_parts().count()
+            messages.success(request, f"✅ {car.name} mashinasiga {added_count} ta qism qo'shildi. Yana {remaining} ta qism qoldi.")
+        
+        return redirect('work_done')
+    
+    context = {
+        'car': car,
+        'pending_count': pending_parts.count(),
+        'pending_parts': pending_parts
+    }
+    return render(request, 'worker_panel/add_car_work.html', context)
+
+@worker_required
+def worker_add_car_work(request, car_id):
+    """Tanlangan mashinaga ish qo'shish (avtomatik tasdiqlanadi)"""
+    from datetime import date
+    from django.utils import timezone
+    
+    car = get_object_or_404(Car, id=car_id)
+    
+    # Hali bajarilmagan qismlar
+    pending_parts = car.get_pending_parts()
+    
+    if not pending_parts.exists():
+        messages.error(request, f"{car.name} mashinasining barcha qismlari allaqachon bajarilgan!")
+        return redirect('work_done')
+    
+    if request.method == 'POST':
+        worker_name = request.POST.get('worker_name', '').strip()
+        
+        if not worker_name:
+            messages.error(request, "Ishchi ismini yozing!")
+            return redirect('worker_add_car_work', car_id=car_id)
+        
+        # Ishchini topish yoki yaratish
+        worker, created = Worker.objects.get_or_create(
+            full_name=worker_name,
+            defaults={
+                'user': None,
+                'salary_percent': 0,
+                'late_fine': 0,
+                'overtime_bonus': 0
+            }
+        )
+        
+        # Checkbox bilan tanlangan qismlar
+        selected_part_ids = request.POST.getlist('selected_parts[]')
+        
+        # Text field bilan yozilgan uvol joylari
+        uvol_text = request.POST.get('uvol_text', '').strip()
+        
+        if not selected_part_ids and not uvol_text:
+            messages.error(request, "Kamida bitta qismni tanlang yoki uvol joylarini yozing!")
+            return redirect('worker_add_car_work', car_id=car_id)
+        
+        added_count = 0
+        
+        # Checkbox bilan tanlangan qismlarni qo'shish
+        for part_id in selected_part_ids:
+            part = CarPart.objects.get(id=part_id)
+            
+            car_work = CarWork.objects.create(
+                car=car,
+                worker=worker,
+                work_type='other',
+                work_date=date.today(),
+                total_price=0,
+                worker_share=0,
+                is_confirmed=True,
+                confirmed_at=timezone.now()
+            )
+            
+            CarWorkPart.objects.create(
+                car_work=car_work,
+                part=part,
+                count=1
+            )
+            added_count += 1
+        
+        # Text field bilan yozilgan uvol joylarini qo'shish
+        if uvol_text:
+            part_names = [p.strip() for p in uvol_text.split(',') if p.strip()]
+            for part_name in part_names:
+                if part_name:
+                    # Qismni topish yoki yaratish
+                    part, created = CarPart.objects.get_or_create(
+                        car=car,
+                        name=part_name,
+                        defaults={'is_default': True}
+                    )
+                    
+                    car_work = CarWork.objects.create(
+                        car=car,
+                        worker=worker,
+                        work_type='other',
+                        work_date=date.today(),
+                        total_price=0,
+                        worker_share=0,
+                        is_confirmed=True,
+                        confirmed_at=timezone.now()
+                    )
+                    
+                    CarWorkPart.objects.create(
+                        car_work=car_work,
+                        part=part,
+                        count=1
+                    )
+                    added_count += 1
+        
+        # Mashinaning barcha qismlari bajarilganligini tekshirish
+        if car.check_completion():
+            messages.success(request, f"✅ {car.name} mashinasining BARCHA qismlari bajarildi!")
+        else:
+            remaining = car.get_pending_parts().count()
+            messages.success(request, f"✅ {car.name} mashinasiga {added_count} ta qism qo'shildi. Yana {remaining} ta qism qoldi.")
+        
+        return redirect('work_done')
+    
+    context = {
+        'car': car,
+        'pending_count': pending_parts.count(),
+        'pending_parts': pending_parts
+    }
+    return render(request, 'worker_panel/add_car_work.html', context)
+
+
+
+def api_car_parts(request):
+    """Mashina qismlarini JSON formatda qaytarish"""
+    car_id = request.GET.get('car_id')
+    if car_id:
+        car = Car.objects.get(id=car_id)
+        # Faqat bajarilmagan qismlarni qaytarish
+        pending_parts = car.get_pending_parts()
+        parts = pending_parts.values('id', 'name')
+        return JsonResponse({
+            'parts': list(parts),
+            'is_completed': car.is_completed
+        })
+    return JsonResponse({'parts': [], 'is_completed': False})
+
+@admin_required
+def add_car_work_admin(request):
+    """Admin panelda ish qo'shish (ishchi tanlanmaydi, worker panelda ko'rinadi)"""
+    from datetime import datetime, date
+    
+    if request.method == 'POST':
+        car_name = request.POST.get('car_name', '').strip()
+        
+        print("=" * 60)
+        print(f"ADD_CAR_WORK_ADMIN - Mashina: {car_name}")
+        
+        if not car_name:
+            messages.error(request, "Mashina nomini kiriting!")
+            return redirect('add_car_work_admin')
+        
+        owner_phone = request.POST.get('owner_phone', '').strip()
+        work_date_str = request.POST.get('work_date', '')
+        
+        if work_date_str:
+            try:
+                work_date = datetime.strptime(work_date_str, '%Y-%m-%d').date()
+            except:
+                work_date = date.today()
+        else:
+            work_date = date.today()
+        
+        # Mashinani topish yoki yaratish
+        car, created = Car.objects.get_or_create(
+            name=car_name,
+            defaults={'owner_phone': owner_phone}
+        )
+        print(f"Mashina: {car.name}, Yangi yaratildi: {created}")
+        
+        if owner_phone:
+            car.owner_phone = owner_phone
+            car.save()
+        
+        # Qismlarni olish
+        part_names = request.POST.getlist('part_name[]')
+        print(f"Qismlar: {part_names}")
+        
+        added_parts = []
+        for name in part_names:
+            if name.strip():
+                part, created = CarPart.objects.get_or_create(
+                    car=car,
+                    name=name.strip(),
+                    defaults={'is_default': True}
+                )
+                added_parts.append(part)
+                print(f"Qism qo'shildi: {part.name}, Yangi: {created}")
+        
+        if not added_parts:
+            messages.error(request, "Kamida bitta qism nomini kiriting!")
+            return redirect('add_car_work_admin')
+        
+        # Ishni saqlash (worker=None, is_confirmed=False)
+        car_work = CarWork.objects.create(
+            car=car,
+            worker=None,
+            work_type='other',
+            work_date=work_date,
+            total_price=0,
+            worker_share=0,
+            is_confirmed=False,
+            confirmed_at=None
+        )
+        print(f"Ish yaratildi: ID={car_work.id}, worker=None, is_confirmed=False")
+        
+        for part in added_parts:
+            CarWorkPart.objects.create(
+                car_work=car_work,
+                part=part,
+                count=1
+            )
+            print(f"Bajarilgan qism qo'shildi: {part.name}")
+        
+        messages.success(request, f"✅ {car_name} mashinasiga ish qo'shildi!")
+        return redirect('admin_dashboard')
+    
+    return render(request, 'admin_panel/add_car_work.html')
+@worker_required
+def worker_add_car_work(request, car_id):
+    """Tanlangan mashinaga ish qo'shish (avtomatik tasdiqlanadi)"""
+    car = get_object_or_404(Car, id=car_id)
+    
+    # Hali bajarilmagan qismlar
+    pending_parts = car.get_pending_parts()
+    
+    if not pending_parts.exists():
+        messages.error(request, f"{car.name} mashinasining barcha qismlari allaqachon bajarilgan!")
+        return redirect('work_done')
+    
+    if request.method == 'POST':
+        # Tanlangan ishchi
+        worker_id = request.POST.get('worker_id')
+        worker = get_object_or_404(Worker, id=worker_id) if worker_id else None
+        
+        if not worker:
+            messages.error(request, "Ishchini tanlang!")
+            return redirect('worker_add_car_work', car_id=car_id)
+        
+        # Checkbox bilan tanlangan qismlar
+        selected_part_ids = request.POST.getlist('selected_parts[]')
+        
+        # Text field bilan yozilgan uvol joylari
+        uvol_text = request.POST.get('uvol_text', '').strip()
+        
+        # Hech narsa tanlanmagan bo'lsa
+        if not selected_part_ids and not uvol_text:
+            messages.error(request, "Kamida bitta qismni tanlang yoki uvol joylarini yozing!")
+            return redirect('worker_add_car_work', car_id=car_id)
+        
+        # Checkbox bilan tanlangan qismlarni qo'shish
+        for part_id in selected_part_ids:
+            part = CarPart.objects.get(id=part_id)
+            
+            car_work = CarWork.objects.create(
+                car=car,
+                worker=worker,
+                work_type='other',
+                work_date=date.today(),
+                total_price=0,
+                worker_share=0,
+                is_confirmed=True,
+                confirmed_at=timezone.now()
+            )
+            
+            CarWorkPart.objects.create(car_work=car_work, part=part, count=1)
+        
+        # Text field bilan yozilgan uvol joylarini qo'shish
+        if uvol_text:
+            # Qismlarni vergul bilan ajratib olish
+            part_names = [p.strip() for p in uvol_text.split(',') if p.strip()]
+            
+            for part_name in part_names:
+                part, created = CarPart.objects.get_or_create(
+                    car=car,
+                    name=part_name,
+                    defaults={'is_default': True}
+                )
+                
+                car_work = CarWork.objects.create(
+                    car=car,
+                    worker=worker,
+                    work_type='other',
+                    work_date=date.today(),
+                    total_price=0,
+                    worker_share=0,
+                    is_confirmed=True,
+                    confirmed_at=timezone.now()
+                )
+                
+                CarWorkPart.objects.create(car_work=car_work, part=part, count=1)
+        
+        # Mashinaning barcha qismlari bajarilganligini tekshirish
+        if car.check_completion():
+            messages.success(request, f"✅ {car.name} mashinasining BARCHA qismlari bajarildi!")
+        else:
+            remaining = car.get_pending_parts().count()
+            messages.success(request, f"✅ {car.name} mashinasiga ish qo'shildi. Yana {remaining} ta qism qoldi.")
+        
+        return redirect('work_done')
+    
+    # Barcha ishchilar
+    workers = Worker.objects.all()
+    
+    context = {
+        'car': car,
+        'workers': workers,
+        'pending_count': pending_parts.count(),
+        'pending_parts': pending_parts
+    }
+    return render(request, 'worker_panel/add_car_work.html', context)
+
+@admin_required
+def pending_car_works(request):
+    """Tasdiqlanmagan ishlar ro'yxati"""
+    pending_works = CarWork.objects.filter(is_confirmed=False).order_by('-created_at')
+    return render(request, 'admin_panel/pending_car_works.html', {'pending_works': pending_works})
+
+
+@admin_required
+def confirm_car_work(request, work_id):
+    """Ishni tasdiqlash va narx kiritish"""
+    car_work = get_object_or_404(CarWork, id=work_id)
+    
+    if request.method == 'POST':
+        total_price = request.POST.get('total_price', 0)
+        try:
+            total_price = float(total_price)
+        except:
+            total_price = 0
+        
+        worker_share = total_price * car_work.worker.salary_percent / 100
+        
+        car_work.total_price = total_price
+        car_work.worker_share = worker_share
+        car_work.is_confirmed = True
+        car_work.confirmed_at = timezone.now()
+        car_work.save()
+        
+        car_work.worker.current_salary += worker_share
+        car_work.worker.save()
+        
+        car_work.car.check_completion()
+        
+        messages.success(request, f"{car_work.car.name} mashinasidagi ish tasdiqlandi! Ishchi ulushi: {worker_share} so'm")
+        return redirect('pending_car_works')
+    
+    context = {
+        'car_work': car_work,
+        'worker': car_work.worker,
+        'car': car_work.car,
+        'parts': car_work.completed_parts.all()
+    }
+    return render(request, 'admin_panel/confirm_car_work.html', context)
+
+
+@admin_required
+def add_car_work_admin(request):
+    """Admin panelda ish qo'shish (har doim yangi mashina va qismlar yaratiladi)"""
+    from datetime import datetime, date
+    
+    if request.method == 'POST':
+        car_name = request.POST.get('car_name', '').strip()
+        
+        if not car_name:
+            messages.error(request, "Mashina nomini kiriting!")
+            return redirect('add_car_work_admin')
+        
+        owner_phone = request.POST.get('owner_phone', '').strip()
+        work_date_str = request.POST.get('work_date', '')
+        
+        if work_date_str:
+            try:
+                work_date = datetime.strptime(work_date_str, '%Y-%m-%d').date()
+            except:
+                work_date = date.today()
+        else:
+            work_date = date.today()
+        
+        # HAR DOIM YANGI MASHINA YARATISH
+        car = Car.objects.create(
+            name=car_name,
+            owner_phone=owner_phone
+        )
+        
+        # Qismlarni yaratish (HAR DOIM YANGI)
+        part_names = request.POST.getlist('part_name[]')
+        
+        for name in part_names:
+            if name.strip():
+                CarPart.objects.create(
+                    car=car,
+                    name=name.strip(),
+                    is_default=True
+                )
+        
+        messages.success(request, f"✅ {car_name} mashinasiga yangi ish qo'shildi! Worker panelda ko'rinadi.")
+        return redirect('admin_dashboard')
+    
+    return render(request, 'admin_panel/add_car_work.html')
+
+
+
+@admin_required
+def add_car(request):
+    """Admin panelda mashina qo'shish"""
+    if request.method == 'POST':
+        form = CarForm(request.POST)
+        if form.is_valid():
+            car = form.save()
+            
+            part_names = request.POST.getlist('part_name[]')
+            for name in part_names:
+                if name.strip():
+                    CarPart.objects.create(car=car, name=name.strip(), is_default=True)
+            
+            messages.success(request, f"{car.name} mashinasi qo'shildi!")
+            return redirect('cars_list')
+    else:
+        form = CarForm()
+    
+    return render(request, 'admin_panel/add_car.html', {'form': form})
+
+
+@admin_required
+def cars_list(request):
+    """Mashinalar ro'yxati"""
+    cars = Car.objects.all()
+    return render(request, 'admin_panel/cars_list.html', {'cars': cars})
+
+
+@worker_required
+def worker_add_car_work(request, car_id):
+    """Tanlangan mashinaga ish qo'shish (avtomatik tasdiqlanadi)"""
+    from datetime import date
+    from django.utils import timezone
+    from django.contrib.auth.models import User
+    
+    car = get_object_or_404(Car, id=car_id)
+    
+    # Hali bajarilmagan qismlar
+    pending_parts = car.get_pending_parts()
+    
+    if not pending_parts.exists():
+        messages.error(request, f"{car.name} mashinasining barcha qismlari allaqachon bajarilgan!")
+        return redirect('work_done')
+    
+    if request.method == 'POST':
+        # POST so'rovi uchun
+        worker_name = request.POST.get('worker_name', '').strip()
+        
+        if not worker_name:
+            messages.error(request, "Ishchi ismini yozing!")
+            return redirect('worker_add_car_work', car_id=car_id)
+        
+        # User yaratish
+        username = worker_name.replace(' ', '_').lower()
+        user, user_created = User.objects.get_or_create(
+            username=username,
+            defaults={'password': '123456'}
+        )
+        
+        # Ishchini topish yoki yaratish
+        worker, created = Worker.objects.get_or_create(
+            full_name=worker_name,
+            defaults={
+                'user': user,
+                'salary_percent': 0,
+                'late_fine': 0,
+                'overtime_bonus': 0
+            }
+        )
+        
+        if not created and worker.user is None:
+            worker.user = user
+            worker.save()
+        
+        # Tanlangan qismlar
+        selected_part_ids = request.POST.getlist('selected_parts[]')
+        
+        if not selected_part_ids:
+            messages.error(request, "Kamida bitta qismni tanlang!")
+            return redirect('worker_add_car_work', car_id=car_id)
+        
+        added_count = 0
+        
+        for part_id in selected_part_ids:
+            part = CarPart.objects.get(id=part_id)
+            
+            car_work = CarWork.objects.create(
+                car=car,
+                worker=worker,
+                work_type='other',
+                work_date=date.today(),
+                total_price=0,
+                worker_share=0,
+                is_confirmed=True,
+                confirmed_at=timezone.now()
+            )
+            
+            CarWorkPart.objects.create(
+                car_work=car_work,
+                part=part,
+                count=1
+            )
+            added_count += 1
+        
+        if car.check_completion():
+            messages.success(request, f"✅ {car.name} mashinasining BARCHA qismlari bajarildi!")
+        else:
+            remaining = car.get_pending_parts().count()
+            messages.success(request, f"✅ {car.name} mashinasiga {added_count} ta qism qo'shildi. Yana {remaining} ta qism qoldi.")
+        
+        return redirect('work_done')
+    
+    # GET so'rovi uchun (worker_name ishlatilmaydi)
+    context = {
+        'car': car,
+        'pending_count': pending_parts.count(),
+        'pending_parts': pending_parts
+    }
+    return render(request, 'worker_panel/add_car_work.html', context)
+
+def api_car_parts(request):
+    """Mashina qismlarini JSON formatda qaytarish"""
+    car_id = request.GET.get('car_id')
+    if car_id:
+        completed_by_anyone = CarWorkPart.objects.filter(
+            car_work__car_id=car_id,
+            car_work__is_confirmed=True
+        ).values_list('part_id', flat=True)
+        
+        parts = CarPart.objects.filter(car_id=car_id).exclude(id__in=completed_by_anyone).values('id', 'name')
+        return JsonResponse({'parts': list(parts)})
+    return JsonResponse({'parts': []})
+
+
+from .models import Worker
+
+@worker_required
+def work_done(request):
+    """Ish qo'shish sahifasi - barcha mashinalar (faqat ishlanmaganlar)"""
+    # Barcha mashinalar
+    all_cars = Car.objects.all()
+    
+    print("=" * 60)
+    print("WORK_DONE - Barcha mashinalar")
+    
+    available_cars = []
+    for car in all_cars:
+        print(f"\n--- Mashina: {car.name} ---")
+        
+        # Barcha qismlar
+        all_parts = car.parts.all()
+        print(f"Barcha qismlar: {[p.name for p in all_parts]}")
+        
+        # Bajarilgan qismlarni hisoblash
+        completed_parts = CarWorkPart.objects.filter(
+            car_work__car=car
+        ).values_list('part_id', flat=True)
+        print(f"Bajarilgan qismlar ID: {list(completed_parts)}")
+        
+        # Bajarilmagan qismlar
+        pending_parts = all_parts.exclude(id__in=completed_parts)
+        print(f"Bajarilmagan qismlar: {[p.name for p in pending_parts]}")
+        print(f"Bajarilmagan qismlar soni: {pending_parts.count()}")
+        
+        if pending_parts.exists():
+            available_cars.append({
+                'car': car,
+                'pending_count': pending_parts.count()
+            })
+            print(f"✅ Qo'shildi: {car.name}")
+        else:
+            print(f"❌ Qo'shilmadi: {car.name} (barcha qismlar bajarilgan)")
+    
+    print(f"\nJami ko'rsatiladigan mashinalar: {len(available_cars)}")
+    print("=" * 60)
+    
+    return render(request, 'worker_panel/work_done.html', {
+        'available_cars': available_cars
+    })
+    
+@admin_required
+def work_history(request):
+    """Ishlar tarixi - yil va oy bo'yicha filtr"""
+    from datetime import date
+    from django.db.models import Count, Sum
+    
+    # Yillar ro'yxati (2020 dan hozirgi yilgacha)
+    current_year = date.today().year
+    years = range(2020, current_year + 1)
+    
+    # Tanlangan yil va oy
+    selected_year = request.GET.get('year', current_year)
+    selected_month = request.GET.get('month', date.today().month)
+    
+    try:
+        selected_year = int(selected_year)
+        selected_month = int(selected_month)
+    except:
+        selected_year = current_year
+        selected_month = date.today().month
+    
+    # Tanlangan oy va yil uchun ishlar
+    works = CarWork.objects.filter(
+        work_date__year=selected_year,
+        work_date__month=selected_month,
+        is_confirmed=True
+    ).order_by('-work_date')
+    
+    # Oylar ro'yxati
+    months = [
+        (1, 'Yanvar'), (2, 'Fevral'), (3, 'Mart'), (4, 'Aprel'),
+        (5, 'May'), (6, 'Iyun'), (7, 'Iyul'), (8, 'Avgust'),
+        (9, 'Sentabr'), (10, 'Oktabr'), (11, 'Noyabr'), (12, 'Dekabr')
+    ]
+    
+    # Har bir ish uchun qismlar ma'lumotini olish
+    work_list = []
+    for work in works:
+        parts_list = []
+        for part in work.completed_parts.all():
+            parts_list.append(part.part.name)
+        
+        work_list.append({
+            'date': work.work_date,
+            'car': work.car.name,
+            'worker': work.worker.full_name if work.worker else 'Noma\'lum',
+            'parts': ', '.join(parts_list) if parts_list else work.car.get_pending_parts_count(),
+            'total_price': work.total_price
+        })
+    
+    # Diagramma uchun statistikalar
+    # 1. Har bir ishchi bo'yicha ishlar soni
+    worker_stats = CarWork.objects.filter(
+        work_date__year=selected_year,
+        work_date__month=selected_month,
+        is_confirmed=True
+    ).values('worker__full_name').annotate(
+        count=Count('id'),
+        total_sum=Sum('total_price')
+    ).order_by('-count')
+    
+    # 2. Har bir mashina bo'yicha ishlar soni
+    car_stats = CarWork.objects.filter(
+        work_date__year=selected_year,
+        work_date__month=selected_month,
+        is_confirmed=True
+    ).values('car__name').annotate(
+        count=Count('id'),
+        total_sum=Sum('total_price')
+    ).order_by('-count')
+    
+    context = {
+        'works': work_list,
+        'years': years,
+        'months': months,
+        'selected_year': selected_year,
+        'selected_month': selected_month,
+        'selected_month_name': dict(months).get(selected_month, ''),
+        'worker_stats': list(worker_stats),
+        'car_stats': list(car_stats),
+        'total_works': len(work_list),
+        'total_amount': sum(w['total_price'] for w in work_list if w['total_price']),
+    }
+    return render(request, 'admin_panel/work_history.html', context)

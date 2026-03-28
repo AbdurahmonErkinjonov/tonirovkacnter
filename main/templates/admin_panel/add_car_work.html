@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+
+{% block title %}Ish qo'shish{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card" style="border: 2px solid #dc3545;">
+            <div class="card-header" style="background-color: #dc3545; color: white;">
+                <h4 class="mb-0"><i class="fas fa-plus-circle"></i> Ish qo'shish</h4>
+            </div>
+            <div class="card-body">
+                <form method="post" id="workForm">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label class="form-label" style="color: #dc3545; font-weight: bold;">
+                            <i class="fas fa-car"></i> Mashina nomi
+                        </label>
+                        <input type="text" name="car_name" class="form-control" 
+                               style="border: 2px solid #dc3545;" 
+                               placeholder="Mashina nomi (masalan: Gentra)"
+                               required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label" style="color: #dc3545; font-weight: bold;">
+                            <i class="fas fa-phone"></i> Egasining telefon raqami (ixtiyoriy)
+                        </label>
+                        <input type="text" name="owner_phone" class="form-control" 
+                               style="border: 2px solid #dc3545;" 
+                               placeholder="+998 90 123 45 67">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label" style="color: #dc3545; font-weight: bold;">
+                            <i class="fas fa-calendar"></i> Ish sanasi (ixtiyoriy)
+                        </label>
+                        <input type="date" name="work_date" class="form-control" 
+                               style="border: 2px solid #dc3545;">
+                        <div class="form-text" style="color: #dc3545;">
+                            Bo'sh qoldirilsa, bugungi sana olinadi
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label" style="color: #dc3545; font-weight: bold;">
+                            <i class="fas fa-tools"></i> Qaysi qismlar ishlangan?
+                        </label>
+                        <div id="parts-container">
+                            <div class="part-item row mb-2">
+                                <div class="col-10">
+                                    <input type="text" name="part_name[]" class="form-control" 
+                                           style="border: 2px solid #dc3545;" 
+                                           placeholder="Qism nomi (masalan: Orqa eshik)">
+                                </div>
+                                <div class="col-2">
+                                    <button type="button" class="btn btn-danger remove-part" style="display: none;">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button type="button" id="add-part" class="btn btn-sm mt-2" 
+                                style="background-color: #dc3545; color: white;">
+                            <i class="fas fa-plus"></i> Qism qo'shish
+                        </button>
+                        <div class="form-text mt-2" style="color: #dc3545;">
+                            <i class="fas fa-info-circle"></i> Bir nechta qism qo'shishingiz mumkin. Bo'sh qoldirilgan qismlar avtomatik o'chiriladi.
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-danger mt-3" style="background-color: #f8d7da; border-color: #f5c6cb;">
+                        <i class="fas fa-check-circle" style="color: #dc3545;"></i>
+                        <strong style="color: #dc3545;">Eslatma</strong><br>
+                        <small style="color: #dc3545;">Qo'shilgan ish worker panelda ko'rinadi. Barcha qismlar bajarilgandan keyin avtomatik o'chadi.</small>
+                    </div>
+                    
+                    <div class="text-end mt-4">
+                        <a href="{% url 'admin_dashboard' %}" class="btn btn-secondary">Bekor qilish</a>
+                        <button type="submit" class="btn" style="background-color: #dc3545; color: white;">Saqlash</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('add-part').addEventListener('click', function() {
+    const container = document.getElementById('parts-container');
+    const newDiv = document.createElement('div');
+    newDiv.className = 'part-item row mb-2';
+    newDiv.innerHTML = `
+        <div class="col-10">
+            <input type="text" name="part_name[]" class="form-control" 
+                   style="border: 2px solid #dc3545;" 
+                   placeholder="Qism nomi">
+        </div>
+        <div class="col-2">
+            <button type="button" class="btn btn-danger remove-part">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    `;
+    container.appendChild(newDiv);
+    
+    document.querySelectorAll('.remove-part').forEach(btn => {
+        btn.style.display = 'inline-block';
+    });
+});
+
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('remove-part') || e.target.parentElement.classList.contains('remove-part')) {
+        const btn = e.target.classList.contains('remove-part') ? e.target : e.target.parentElement;
+        btn.closest('.part-item').remove();
+        
+        if (document.querySelectorAll('.part-item').length === 1) {
+            document.querySelectorAll('.remove-part').forEach(btn => {
+                btn.style.display = 'none';
+            });
+        }
+    }
+});
+
+document.getElementById('workForm').addEventListener('submit', function(e) {
+    const carName = document.querySelector('input[name="car_name"]').value.trim();
+    const partInputs = document.querySelectorAll('input[name="part_name[]"]');
+    
+    if (!carName) {
+        e.preventDefault();
+        alert("❌ Mashina nomini kiriting!");
+        return false;
+    }
+    
+    let hasPart = false;
+    partInputs.forEach(input => {
+        if (input.value.trim() !== '') {
+            hasPart = true;
+        }
+    });
+    
+    if (!hasPart) {
+        e.preventDefault();
+        alert("❌ Kamida bitta qism nomini kiriting!");
+        return false;
+    }
+});
+</script>
+{% endblock %}

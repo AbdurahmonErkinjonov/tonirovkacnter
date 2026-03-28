@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+
+{% block title %}Davomat vaqtini o'zgartirish{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card bg-gradient">
+            <div class="card-body text-center py-4">
+                <h2 class="text-white mb-0">
+                    <i class="fas fa-calendar-alt"></i> Davomat vaqtini o'zgartirish
+                </h2>
+                <p class="text-white-50 mt-2 mb-0">
+                    Hafta: {{ week_start|date:"d-m-Y" }} - {{ week_end|date:"d-m-Y" }}
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-users"></i> Ishchilar davomati</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Ishchi</th>
+                                {% for weekday in weekdays %}
+                                <th class="text-center">{{ weekday }}</th>
+                                {% endfor %}
+                            </thead>
+                        <tbody>
+                            {% for data in attendance_data %}
+                            <tr>
+                                <td><strong>{{ data.worker.full_name }}</strong></td>
+                                {% for day in data.days %}
+                                <td class="text-center">
+                                    {% if day.has_session %}
+                                        <div class="mb-1">
+                                            <small class="text-success">Kelgan: {{ day.check_in|date:"H:i" }}</small>
+                                        </div>
+                                        {% if day.check_out %}
+                                        <div>
+                                            <small class="text-danger">Ketgan: {{ day.check_out|date:"H:i" }}</small>
+                                        </div>
+                                        {% endif %}
+                                        <a href="{% url 'attendance_edit' day.session_id %}" class="btn btn-sm btn-warning mt-2">
+                                            <i class="fas fa-edit"></i> O'zgartirish
+                                        </a>
+                                    {% else %}
+                                        <span class="text-muted">Kelilmagan</span>
+                                        <a href="{% url 'attendance_create' data.worker.id day.date|date:'Y-m-d' %}" class="btn btn-sm btn-success mt-2">
+                                            <i class="fas fa-plus"></i> Qo'shish
+                                        </a>
+                                    {% endif %}
+                                </td>
+                                {% endfor %}
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="8" class="text-center">Ishchilar mavjud emas</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-3">
+                    <a href="{% url 'admin_dashboard' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Orqaga
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

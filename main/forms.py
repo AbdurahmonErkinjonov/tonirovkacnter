@@ -54,26 +54,19 @@ class WorkerForm(forms.ModelForm):
         
 
 class WorkerEditForm(forms.ModelForm):
-    """Ishchi ma'lumotlarini tahrirlash uchun (parol o'zgartirilmaydi)"""
-    monday_working = forms.BooleanField(required=False, label="Dushanba ish kuni", widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}))
-    tuesday_working = forms.BooleanField(required=False, label="Seshanba ish kuni", widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}))
-    wednesday_working = forms.BooleanField(required=False, label="Chorshanba ish kuni", widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}))
-    thursday_working = forms.BooleanField(required=False, label="Payshanba ish kuni", widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}))
-    friday_working = forms.BooleanField(required=False, label="Juma ish kuni", widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}))
-    saturday_working = forms.BooleanField(required=False, label="Shanba ish kuni", widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}))
-    sunday_working = forms.BooleanField(required=False, label="Yakshanba ish kuni", widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}))
-    
-    
+    monday_working = forms.BooleanField(required=False, label="Dushanba", widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}))
+    tuesday_working = forms.BooleanField(required=False, label="Seshanba", widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}))
+    wednesday_working = forms.BooleanField(required=False, label="Chorshanba", widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}))
+    thursday_working = forms.BooleanField(required=False, label="Payshanba", widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}))
+    friday_working = forms.BooleanField(required=False, label="Juma", widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}))
+    saturday_working = forms.BooleanField(required=False, label="Shanba", widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}))
+    sunday_working = forms.BooleanField(required=False, label="Yakshanba", widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}))
     
     three_hour_bonus_amount = forms.DecimalField(
-        max_digits=10, 
-        decimal_places=2, 
-        required=False, 
-        initial=0,
+        max_digits=10, decimal_places=2, required=False, initial=0,
         label="3 soatdan keyin bonus (so'm)",
         widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'})
-)
-    
+    )
     
     class Meta:
         model = Worker
@@ -83,8 +76,6 @@ class WorkerEditForm(forms.ModelForm):
             'wednesday_start', 'wednesday_end', 'thursday_start', 'thursday_end',
             'friday_start', 'friday_end', 'saturday_start', 'saturday_end',
             'sunday_start', 'sunday_end',
-            'monday_working', 'tuesday_working', 'wednesday_working', 'thursday_working',
-            'friday_working', 'saturday_working', 'sunday_working'
         ]
         widgets = {
             'full_name': forms.TextInput(attrs={'class': 'form-control'}),
@@ -106,19 +97,6 @@ class WorkerEditForm(forms.ModelForm):
             'sunday_start': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
             'sunday_end': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
         }
-        
-        
-        
-    labels = {
-            'monday_working': 'Dushanba ish kuni',
-            'tuesday_working': 'Seshanba ish kuni',
-            'wednesday_working': 'Chorshanba ish kuni',
-            'thursday_working': 'Payshanba ish kuni',
-            'friday_working': 'Juma ish kuni',
-            'saturday_working': 'Shanba ish kuni',
-            'sunday_working': 'Yakshanba ish kuni',
-        }
-
 class HolidayForm(forms.ModelForm):
     class Meta:
         model = Holiday
@@ -314,3 +292,38 @@ class BronWorkForm(forms.Form):
 
     
     
+
+class CarForm(forms.ModelForm):
+    """Mashina qo'shish formasi"""
+    class Meta:
+        model = Car
+        fields = ['name', 'owner_phone']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Mashina nomi...'}),
+            'owner_phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '+998 90 123 45 67'}),
+        }
+
+
+class CarWorkForm(forms.Form):
+    """Mashina ishi qo'shish formasi"""
+    car = forms.ModelChoiceField(
+        queryset=Car.objects.all(),
+        label="Mashina",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    work_type = forms.ChoiceField(
+        choices=[('tonirovka', 'Tonirovka'), ('sonsa', 'Sonsa Zashita'), 
+                 ('laminatsiya', 'Laminatsiya'), ('bron', 'Bron')],
+        label="Ish turi",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    work_date = forms.DateField(
+        required=False,
+        label="Ish sanasi",
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'})
+    )
+    total_price = forms.DecimalField(
+        max_digits=15, decimal_places=2,
+        label="Umumiy narx (so'm)",
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'})
+    )   

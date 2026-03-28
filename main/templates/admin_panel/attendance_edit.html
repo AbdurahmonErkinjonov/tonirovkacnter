@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block title %}Davomatni tahrirlash{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card animate__animated animate__fadeInUp">
+            <div class="card-header bg-warning text-dark">
+                <h4 class="mb-0"><i class="fas fa-edit"></i> Davomatni tahrirlash</h4>
+            </div>
+            <div class="card-body">
+                <h5 class="mb-4">{{ worker.full_name }}</h5>
+                
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Kelgan vaqti</label>
+                        <div class="row">
+                            <div class="col-6">
+                                <input type="date" name="check_in_date" class="form-control" 
+                                       value="{{ check_in|date:'Y-m-d' }}">
+                            </div>
+                            <div class="col-6">
+                                <input type="time" name="check_in_time" class="form-control" 
+                                       value="{{ check_in|date:'H:i' }}">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Ketgan vaqti</label>
+                        <div class="row">
+                            <div class="col-6">
+                                <input type="date" name="check_out_date" class="form-control" 
+                                       value="{{ check_out|date:'Y-m-d' }}">
+                            </div>
+                            <div class="col-6">
+                                <input type="time" name="check_out_time" class="form-control" 
+                                       value="{{ check_out|date:'H:i' }}">
+                            </div>
+                        </div>
+                        <div class="form-text">Agar ketmagan bo'lsa, bo'sh qoldiring</div>
+                    </div>
+                    
+                    <div class="text-end">
+                        <a href="{% url 'attendance_list' %}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Bekor qilish
+                        </a>
+                        <button type="submit" class="btn btn-warning">
+                            <i class="fas fa-save"></i> Saqlash
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

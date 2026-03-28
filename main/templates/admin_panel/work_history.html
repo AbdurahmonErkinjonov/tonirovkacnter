@@ -1,0 +1,187 @@
+{% extends 'base.html' %}
+
+{% block title %}Ishlar tarixi{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card" style="background: linear-gradient(135deg, #dc3545, #b71c1c);">
+            <div class="card-body text-center py-4">
+                <h2 class="text-white mb-0">
+                    <i class="fas fa-history"></i> Ishlar tarixi
+                </h2>
+                <p class="text-white-50 mt-2 mb-0">
+                    Qilingan ishlarni ko'rish va tahlil qilish
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filtr form -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card" style="border: 2px solid #dc3545;">
+            <div class="card-header" style="background-color: #dc3545; color: white;">
+                <h5 class="mb-0"><i class="fas fa-filter"></i> Filtrlash</h5>
+            </div>
+            <div class="card-body">
+                <form method="get" class="row g-3">
+                    <div class="col-md-5">
+                        <label class="form-label" style="color: #dc3545;">Yil</label>
+                        <select name="year" class="form-control" style="border: 2px solid #dc3545;">
+                            {% for y in years %}
+                            <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>{{ y }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label" style="color: #dc3545;">Oy</label>
+                        <select name="month" class="form-control" style="border: 2px solid #dc3545;">
+                            {% for m_num, m_name in months %}
+                            <option value="{{ m_num }}" {% if selected_month == m_num %}selected{% endif %}>{{ m_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn w-100" style="background-color: #dc3545; color: white;">
+                            <i class="fas fa-search"></i> Ko'rish
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistika kartalari -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card" style="border: 2px solid #dc3545;">
+            <div class="card-body text-center">
+                <i class="fas fa-tasks fa-3x" style="color: #dc3545;"></i>
+                <h2 class="mt-2" style="color: #dc3545;">{{ total_works }}</h2>
+                <p class="text-muted">Jami ishlar</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card" style="border: 2px solid #dc3545;">
+            <div class="card-body text-center">
+                <i class="fas fa-money-bill-wave fa-3x" style="color: #dc3545;"></i>
+                <h2 class="mt-2" style="color: #dc3545;">{{ total_amount|floatformat:0 }} so'm</h2>
+                <p class="text-muted">Jami summa</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Ishlar jadvali -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card" style="border: 2px solid #dc3545;">
+            <div class="card-header" style="background-color: #dc3545; color: white;">
+                <h5 class="mb-0"><i class="fas fa-list"></i> {{ selected_year }} - {{ selected_month_name }} oyidagi ishlar</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-bordered mb-0" style="background-color: #fff3f3;">
+                        <thead style="background-color: #dc3545; color: white;">
+                            <tr>
+                                <th>Sana</th>
+                                <th>Mashina</th>
+                                <th>Ishchi</th>
+                                <th>Qilingan qismlar</th>
+                                <th>Summa</th>
+                            </thead>
+                        <tbody>
+                            {% for work in works %}
+                            <tr style="border-bottom: 1px solid #dc3545;">
+                                <td style="color: #333;">{{ work.date|date:"d-m-Y" }}</td>
+                                <td style="color: #333;"><strong>{{ work.car }}</strong></td>
+                                <td style="color: #333;">{{ work.worker }}</td>
+                                <td style="color: #333;">{{ work.parts }}</td>
+                                <td style="color: #333;">{{ work.total_price|floatformat:0 }} so'm</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center py-4" style="color: #dc3545;">
+                                    <i class="fas fa-info-circle"></i> Bu oyda hech qanday ish qilinmagan
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- LINE GRAPH - Ishchilar bo'yicha statistik -->
+<div class="row">
+    <div class="col-12">
+        <div class="card" style="border: 2px solid #dc3545;">
+            <div class="card-header" style="background-color: #dc3545; color: white;">
+                <h5 class="mb-0"><i class="fas fa-chart-line"></i> Ishchilar bo'yicha statistik</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="workerLineChart" style="height: 400px; width: 100%;"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Ishchilar bo'yicha Line Graph
+const workerCtx = document.getElementById('workerLineChart').getContext('2d');
+const workerNames = [{% for stat in worker_stats %}'{{ stat.worker__full_name }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
+const workerCounts = [{% for stat in worker_stats %}{{ stat.count }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+
+new Chart(workerCtx, {
+    type: 'line',
+    data: {
+        labels: workerNames,
+        datasets: [{
+            label: 'Ishlar soni',
+            data: workerCounts,
+            borderColor: '#007bff',
+            backgroundColor: 'rgba(0, 123, 255, 0.1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: '#007bff',
+            pointBorderColor: '#fff',
+            pointRadius: 4,
+            pointHoverRadius: 6
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: {
+                position: 'top'
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: { stepSize: 1 }
+            }
+        }
+    }
+});
+</script>
+
+<style>
+.table th, .table td {
+    vertical-align: middle;
+}
+.table tbody tr:hover {
+    background-color: #ffe0e0 !important;
+}
+</style>
+{% endblock %}

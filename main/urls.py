@@ -21,15 +21,22 @@ urlpatterns = [
     path('admin-panel/salary-paid/', views.salary_paid, name='salary_paid'),
     path('admin-panel/payment/', views.payment, name='payment'),
     path('admin-panel/reports/', views.reports, name='reports'),
-    
-    
+    path('admin-panel/attendance/', views.attendance_list, name='attendance_list'),
+    path('admin-panel/attendance/edit/<int:session_id>/', views.attendance_edit, name='attendance_edit'),
+    path('admin-panel/attendance/create/<int:worker_id>/<str:date>/', views.attendance_create, name='attendance_create'),
+    path('admin-panel/add-car/', views.add_car, name='add_car'),
+    path('admin-panel/cars/', views.cars_list, name='cars_list'),
+    path('admin-panel/add-car-work/', views.add_car_work_admin, name='add_car_work_admin'),
+    path('admin-panel/pending-works/', views.pending_car_works, name='pending_car_works'),
+    path('admin-panel/confirm-work/<int:work_id>/', views.confirm_car_work, name='confirm_car_work'),
+    path('admin-panel/work-history/', views.work_history, name='work_history'),
     # Worker panel
     path('worker-panel/', views.worker_dashboard, name='worker_dashboard'),
     path('worker-panel/check-in/', views.check_in, name='check_in'),
     path('worker-panel/check-out/', views.check_out, name='check_out'),
     path('worker-panel/work-done/', views.work_done, name='work_done'),
-    path('worker-panel/tonirovka-work/', views.tonirovka_work, name='tonirovka_work'),
-    path('worker-panel/sonsa-work/', views.sonsa_work, name='sonsa_work'),
-    path('worker-panel/laminatsiya-work/', views.laminatsiya_work, name='laminatsiya_work'),
-    path('worker-panel/bron-work/', views.bron_work, name='bron_work'),
+    path('worker-panel/add-car-work/<int:car_id>/', views.worker_add_car_work, name='worker_add_car_work'),
+    
+    # API
+    path('api/car-parts/', views.api_car_parts, name='api_car_parts'),
 ]
