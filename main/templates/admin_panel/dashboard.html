@@ -21,7 +21,7 @@
 <!-- Statistics -->
 <div class="row mb-4">
     <div class="col-md-3" data-aos="fade-up" data-aos-delay="100">
-        <div class="stat-card">
+        <div class="stat-card" style="cursor: pointer;" onclick="showWorkersModal()">
             <div class="stat-icon">
                 <i class="fas fa-users text-primary"></i>
             </div>
@@ -48,7 +48,7 @@
         </div>
     </div>
     <div class="col-md-3" data-aos="fade-up" data-aos-delay="400">
-        <div class="stat-card">
+        <div class="stat-card" style="cursor: pointer;" onclick="showPresentWorkersModal()">
             <div class="stat-icon">
                 <i class="fas fa-clock text-info"></i>
             </div>
@@ -143,6 +143,15 @@
                             <i class="fas fa-hand-holding-usd"></i> To'lov
                         </a>
                     </div>
+
+                <div class="col-md-3 col-lg-2">
+                    <a href="{% url 'messenger' %}" class="btn btn-info w-100 action-btn">
+                        <i class="fas fa-comments"></i> Guruh chat
+                    </a>
+                </div>
+
+
+
                     <div class="col-md-3 col-lg-2">
                         <a href="{% url 'reports' %}" class="btn btn-purple w-100 action-btn" style="background: #6f42c1;">
                             <i class="fas fa-chart-bar"></i> Hisobot
@@ -244,6 +253,366 @@
         color: #ff0000 !important;
     }
 </style>
+
+
+<!-- Ishchilar ma'lumotlari modali -->
+<div class="modal fade" id="workersModal" tabindex="-1" aria-labelledby="workersModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header" style="background-color: #dc3545; color: white;">
+                <h5 class="modal-title" id="workersModalLabel">
+                    <i class="fas fa-users"></i> Ishchilar ma'lumotlari
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="workersModalBody">
+                <div class="text-center py-4">
+                    <div class="spinner-border text-danger" role="status">
+                        <span class="visually-hidden">Yuklanmoqda...</span>
+                    </div>
+                    <p class="mt-2">Ma'lumotlar yuklanmoqda...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Yopish</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function showWorkersModal() {
+    // Modalni ochish
+    const modal = new bootstrap.Modal(document.getElementById('workersModal'));
+    modal.show();
+    
+    // Ma'lumotlarni yuklash
+    fetch('/admin-panel/get-workers-data/')
+        .then(response => response.json())
+        .then(data => {
+            let html = `
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead class="table-danger">
+                            <tr>
+                                <th>#</th>
+                                <th>Ishchi ismi</th>
+                                <th>Kelgan vaqti</th>
+                                <th>Ketgan vaqti</th>
+                                <th>Jarimalar</th>
+                                <th>Bonuslar</th>
+                                <th>Oyligi</th>
+                                <th>Bajarilgan ishlar</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            data.workers.forEach((worker, index) => {
+                html += `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td><strong>${worker.full_name}</strong></td>
+                        <td>${worker.check_in || '-'}</td>
+                        <td>${worker.check_out || '-'}</td>
+                        <td class="text-danger">${worker.total_fines} so'm</td>
+                        <td class="text-success">${worker.total_bonuses} so'm</td>
+                        <td class="text-primary">${worker.net_salary} so'm</td>
+                        <td>
+                            <button class="btn btn-sm btn-info" onclick="showWorkerWorks(${worker.id}, '${worker.full_name}')">
+                                <i class="fas fa-eye"></i> Ishlar
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += `</tbody></table></div>`;
+            document.getElementById('workersModalBody').innerHTML = html;
+        })
+        .catch(error => {
+            document.getElementById('workersModalBody').innerHTML = `
+                <div class="alert alert-danger">Xatolik yuz berdi: ${error}</div>
+            `;
+        });
+}
+
+function showWorkerWorks(workerId, workerName) {
+    fetch(`/admin-panel/get-worker-works/${workerId}/`)
+        .then(response => response.json())
+        .then(data => {
+            let html = `
+                <div class="mb-3">
+                    <button class="btn btn-sm btn-secondary" onclick="showWorkersModal()">← Orqaga</button>
+                    <h5 class="mt-3">${workerName} - Bajarilgan ishlar</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead class="table-danger">
+                            <tr>
+                                <th>Sana</th>
+                                <th>Mashina</th>
+                                <th>Qilingan qismlar</th>
+                                <th>Summa</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            data.works.forEach(work => {
+                html += `
+                    <tr>
+                        <td>${work.date}</td>
+                        <td><strong>${work.car}</strong></td>
+                        <td>${work.parts}</td>
+                        <td>${work.total_price} so'm</td>
+                    </tr>
+                `;
+            });
+            
+            if (data.works.length === 0) {
+                html += `<tr><td colspan="4" class="text-center">Hech qanday ish bajarilmagan</td></tr>`;
+            }
+            
+            html += `</tbody></table></div>`;
+            document.getElementById('workersModalBody').innerHTML = html;
+        })
+        .catch(error => {
+            document.getElementById('workersModalBody').innerHTML = `
+                <div class="alert alert-danger">Xatolik yuz berdi: ${error}</div>
+                <button class="btn btn-sm btn-secondary" onclick="showWorkersModal()">← Orqaga</button>
+            `;
+        });
+}
+</script>
+
+
+<!-- Ishchilar ma'lumotlari modali -->
+<div class="modal fade" id="workersModal" tabindex="-1" aria-labelledby="workersModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header" style="background-color: #dc3545; color: white;">
+                <h5 class="modal-title" id="workersModalLabel">
+                    <i class="fas fa-users"></i> Ishchilar ro'yxati
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="workersModalBody">
+                <div class="text-center py-4">
+                    <div class="spinner-border text-danger" role="status">
+                        <span class="visually-hidden">Yuklanmoqda...</span>
+                    </div>
+                    <p class="mt-2">Ma'lumotlar yuklanmoqda...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Yopish</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Ishchi ma'lumotlari modali (oylar bo'yicha) -->
+<div class="modal fade" id="workerDetailModal" tabindex="-1" aria-labelledby="workerDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header" style="background-color: #dc3545; color: white;">
+                <h5 class="modal-title" id="workerDetailModalLabel">
+                    <i class="fas fa-user"></i> Ishchi ma'lumotlari
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="workerDetailModalBody">
+                <div class="text-center py-4">
+                    <div class="spinner-border text-danger" role="status">
+                        <span class="visually-hidden">Yuklanmoqda...</span>
+                    </div>
+                    <p class="mt-2">Ma'lumotlar yuklanmoqda...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Yopish</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function showWorkersModal() {
+    const modal = new bootstrap.Modal(document.getElementById('workersModal'));
+    modal.show();
+    
+    fetch('/admin-panel/get-workers-list/')
+        .then(response => response.json())
+        .then(data => {
+            let html = `<div class="list-group">`;
+            data.workers.forEach(worker => {
+                html += `
+                    <a href="javascript:void(0)" class="list-group-item list-group-item-action" 
+                       onclick="showWorkerDetails(${worker.id}, '${worker.full_name}')">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="fas fa-user-circle text-danger me-2"></i>
+                                <strong>${worker.full_name}</strong>
+                            </div>
+                            <i class="fas fa-chevron-right text-muted"></i>
+                        </div>
+                    </a>
+                `;
+            });
+            html += `</div>`;
+            document.getElementById('workersModalBody').innerHTML = html;
+        })
+        .catch(error => {
+            document.getElementById('workersModalBody').innerHTML = `<div class="alert alert-danger">Xatolik: ${error}</div>`;
+        });
+}
+
+function showWorkerDetails(workerId, workerName) {
+    const workersModal = bootstrap.Modal.getInstance(document.getElementById('workersModal'));
+    workersModal.hide();
+    
+    const workerModal = new bootstrap.Modal(document.getElementById('workerDetailModal'));
+    workerModal.show();
+    
+    document.getElementById('workerDetailModalLabel').innerHTML = `<i class="fas fa-user"></i> ${workerName}`;
+    document.getElementById('workerDetailModalBody').innerHTML = `
+        <div class="text-center py-4">
+            <div class="spinner-border text-danger" role="status"></div>
+            <p class="mt-2">Yuklanmoqda...</p>
+        </div>
+    `;
+    
+    fetch(`/admin-panel/get-worker-details/${workerId}/`)
+        .then(response => response.json())
+        .then(data => {
+            let html = `
+                <div class="row mb-4">
+                    <div class="col-md-3"><div class="card text-center border-danger"><div class="card-body"><h6>Jarimalar</h6><h4 class="text-danger">${data.total_fines} so'm</h4></div></div></div>
+                    <div class="col-md-3"><div class="card text-center border-success"><div class="card-body"><h6>Bonuslar</h6><h4 class="text-success">${data.total_bonuses} so'm</h4></div></div></div>
+                    <div class="col-md-3"><div class="card text-center border-primary"><div class="card-body"><h6>Sof oylik</h6><h4 class="text-primary">${data.net_salary} so'm</h4></div></div></div>
+                    <div class="col-md-3"><div class="card text-center border-warning"><div class="card-body"><h6>To'langan</h6><h4 class="text-warning">${data.total_paid} so'm</h4></div></div></div>
+                </div>
+                <div class="mb-3">
+                    <label>Yil:</label>
+                    <select id="yearSelect" class="form-select" onchange="loadWorkerData(${workerId}, this.value)">
+            `;
+            data.years.forEach(y => { html += `<option value="${y}">${y}</option>`; });
+            html += `</select></div><div id="monthlyData"></div>`;
+            document.getElementById('workerDetailModalBody').innerHTML = html;
+            if (data.years.length) loadWorkerData(workerId, data.years[0]);
+        });
+}
+
+function loadWorkerData(workerId, year) {
+    document.getElementById('monthlyData').innerHTML = `<div class="text-center py-4"><div class="spinner-border text-danger"></div><p>Yuklanmoqda...</p></div>`;
+    
+    fetch(`/admin-panel/get-worker-monthly-data/${workerId}/?year=${year}`)
+        .then(response => response.json())
+        .then(data => {
+            let html = `<div class="accordion" id="monthsAccordion">`;
+            const monthNames = ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
+            data.months.forEach((month, idx) => {
+                html += `
+                    <div class="accordion-item">
+                        <h2 class="accordion-header"><button class="accordion-button ${idx!==0?'collapsed':''}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse${idx}">${monthNames[month.month_num-1]} ${year} <span class="badge bg-danger ms-2">${month.work_count} ish</span></button></h2>
+                        <div id="collapse${idx}" class="accordion-collapse collapse ${idx===0?'show':''}" data-bs-parent="#monthsAccordion">
+                            <div class="accordion-body">
+                                <h6><i class="fas fa-clock"></i> Davomat</h6>
+                                <table class="table table-sm table-bordered"><thead class="table-light"><tr><th>Sana</th><th>Kelgan</th><th>Ketgan</th><th>Jarima</th><th>Bonus</th></tr></thead><tbody>
+                `;
+                month.sessions.forEach(s => {
+                    html += `<tr><td>${s.date}</td><td>${s.check_in||'-'}</td><td>${s.check_out||'-'}</td><td class="text-danger">${s.fine||0} so'm</td><td class="text-success">${s.bonus||0} so'm</td></tr>`;
+                });
+                if(!month.sessions.length) html += `<tr><td colspan="5">Ma'lumot yo'q</td></tr>`;
+                html += `</tbody></table>
+                                <h6><i class="fas fa-tools"></i> Bajarilgan ishlar</h6>
+                                <table class="table table-sm table-bordered"><thead class="table-light"><tr><th>Sana</th><th>Mashina</th><th>Qilingan qismlar</th><th>Uvol</th><th>Summa</th></tr></thead><tbody>`;
+                month.works.forEach(w => {
+                    html += `<tr><td>${w.date}</td><td><strong>${w.car}</strong></td><td>${w.parts_done||'-'}</td><td>${w.parts_uvol||'-'}</td><td>${w.total_price} so'm</td></tr>`;
+                });
+                if(!month.works.length) html += `<tr><td colspan="5">Ish yo'q</td></tr>`;
+                html += `</tbody></table>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            html += `</div>`;
+            document.getElementById('monthlyData').innerHTML = html;
+        });
+}
+</script>
+
+<!-- Ishda borlar modali -->
+<div class="modal fade" id="presentWorkersModal" tabindex="-1" aria-labelledby="presentWorkersModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background-color: #dc3545; color: white;">
+                <h5 class="modal-title" id="presentWorkersModalLabel">
+                    <i class="fas fa-clock"></i> Ishda bo'lgan ishchilar
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="presentWorkersModalBody">
+                <div class="text-center py-4">
+                    <div class="spinner-border text-danger" role="status">
+                        <span class="visually-hidden">Yuklanmoqda...</span>
+                    </div>
+                    <p class="mt-2">Ma'lumotlar yuklanmoqda...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Yopish</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function showPresentWorkersModal() {
+    const modal = new bootstrap.Modal(document.getElementById('presentWorkersModal'));
+    modal.show();
+    
+    fetch('/admin-panel/get-present-workers/')
+        .then(response => response.json())
+        .then(data => {
+            let html = '';
+            
+            if (data.workers.length === 0) {
+                html = '<div class="text-center text-muted py-4"><i class="fas fa-info-circle fa-2x mb-2"></i><p>Hozir ishda hech kim yo\'q</p></div>';
+            } else {
+                html = '<div class="list-group">';
+                data.workers.forEach(worker => {
+                    html += `
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <i class="fas fa-user-circle text-danger me-2"></i>
+                                    <strong>${worker.full_name}</strong>
+                                </div>
+                                <div>
+                                    <span class="badge bg-success">Kelgan: ${worker.check_in}</span>
+                                </div>
+                            </div>
+                            <div class="mt-2 small text-muted">
+                                <i class="fas fa-clock"></i> Ish vaqti: ${worker.work_duration}
+                            </div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            }
+            
+            document.getElementById('presentWorkersModalBody').innerHTML = html;
+        })
+        .catch(error => {
+            document.getElementById('presentWorkersModalBody').innerHTML = `
+                <div class="alert alert-danger">Xatolik yuz berdi: ${error}</div>
+            `;
+        });
+}
+</script>
 
 
 {% endblock %}

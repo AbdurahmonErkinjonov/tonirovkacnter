@@ -20,13 +20,18 @@
 
 <!-- Stats Cards -->
 <div class="row mb-4">
-    <div class="col-md-4" data-aos="fade-up" data-aos-delay="100">
+    <div class="col-md-4">
         <div class="stat-card">
-            <div class="stat-icon">
-                <i class="fas fa-exclamation-triangle text-danger"></i>
+            <div class="stat-icon text-danger">
+                <i class="fas fa-exclamation-triangle"></i>
             </div>
             <div class="stat-value">{{ month_fines|floatformat:0 }} so'm</div>
             <div class="stat-label">Jarimalar</div>
+            {% if month_fines > 0 %}
+            <div class="small text-danger mt-2">
+                <i class="fas fa-info-circle"></i> Jami jarima: {{ month_fines|floatformat:0 }} so'm
+            </div>
+            {% endif %}
         </div>
     </div>
     <div class="col-md-4" data-aos="fade-up" data-aos-delay="200">
@@ -111,6 +116,16 @@
     </div>
 </div>
 
+
+<div class="row mt-3">
+    <div class="col-12">
+        <a href="{% url 'messenger' %}" class="btn btn-info w-100">
+            <i class="fas fa-comments"></i> Guruh chat
+        </a>
+    </div>
+</div>
+
+
 <!-- Recent Works -->
 <div class="row" data-aos="fade-up">
     <div class="col-12">
@@ -179,6 +194,44 @@
         </div>
     </div>
 </div>
+
+
+<!-- Oxirgi jarimalar -->
+{% if worker.total_fines > 0 %}
+<div class="row mt-4" data-aos="fade-up">
+    <div class="col-12">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0"><i class="fas fa-exclamation-triangle"></i> Jarimalar tarixi</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Sana</th>
+                                <th>Sabab</th>
+                                <th>Summa</th>
+                            </thead>
+                        <tbody>
+                            {% for session in month_sessions %}
+                            {% if session.fine_amount > 0 %}
+                            <tr>
+                                <td>{{ session.check_in|date:"d.m.Y" }}</td>
+                                <td>Kechikish ({{ session.check_in|date:"H:i" }})</td>
+                                <td class="text-danger">{{ session.fine_amount|floatformat:0 }} so'm</td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 
 <!-- Kelajakdagi dam olish kunlari -->
 {% if future_holidays %}

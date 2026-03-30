@@ -5,9 +5,11 @@ urlpatterns = [
     path('', views.home_redirect, name='home'),
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
-    
     # Admin panel
+    path('admin-panel/get-present-workers/', views.get_present_workers, name='get_present_workers'),
     path('admin-panel/', views.admin_dashboard, name='admin_dashboard'),
+    path('admin-panel/get-workers-data/', views.get_workers_data, name='get_workers_data'),
+    path('admin-panel/get-worker-works/<int:worker_id>/', views.get_worker_works, name='get_worker_works'),
     path('admin-panel/workers/', views.workers_list, name='workers_list'),
     path('admin-panel/worker/edit/<int:worker_id>/', views.edit_worker, name='edit_worker'),
     path('admin-panel/worker/delete/<int:worker_id>/', views.delete_worker, name='delete_worker'),
@@ -29,7 +31,9 @@ urlpatterns = [
     path('admin-panel/add-car-work/', views.add_car_work_admin, name='add_car_work_admin'),
     path('admin-panel/pending-works/', views.pending_car_works, name='pending_car_works'),
     path('admin-panel/confirm-work/<int:work_id>/', views.confirm_car_work, name='confirm_car_work'),
-    path('admin-panel/work-history/', views.work_history, name='work_history'),
+    path('admin-panel/work-history/', views.work_history, name='work_history'),path('admin-panel/get-workers-list/', views.get_workers_list, name='get_workers_list'),
+    path('admin-panel/get-worker-details/<int:worker_id>/', views.get_worker_details, name='get_worker_details'),
+    path('admin-panel/get-worker-monthly-data/<int:worker_id>/', views.get_worker_monthly_data, name='get_worker_monthly_data'),
     # Worker panel
     path('worker-panel/', views.worker_dashboard, name='worker_dashboard'),
     path('worker-panel/check-in/', views.check_in, name='check_in'),
@@ -39,4 +43,9 @@ urlpatterns = [
     
     # API
     path('api/car-parts/', views.api_car_parts, name='api_car_parts'),
+    
+    
+    #chat
+    path('messenger/', views.messenger, name='messenger'),
+    path('messenger/delete/<int:message_id>/', views.messenger_delete_message, name='messenger_delete_message'),
 ]

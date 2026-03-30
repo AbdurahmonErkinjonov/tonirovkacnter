@@ -391,3 +391,30 @@ class CarWorkPart(models.Model):
     class Meta:
         verbose_name = "Bajarilgan qism"
         verbose_name_plural = "Bajarilgan qismlar"
+        
+        
+        
+class GroupMessage(models.Model):
+    """Guruh xabarlari"""
+    MESSAGE_TYPES = [
+        ('text', 'Matn'),
+        ('image', 'Rasm'),
+        ('video', 'Video'),
+    ]
+    
+    sender = models.ForeignKey(Worker, on_delete=models.CASCADE, related_name='messages', null=True, blank=True)
+    sender_name = models.CharField(max_length=255, verbose_name="Yuboruvchi ismi")
+    is_admin = models.BooleanField(default=False, verbose_name="Admin yuborganmi?")
+    message_type = models.CharField(max_length=10, choices=MESSAGE_TYPES, default='text')
+    text = models.TextField(blank=True, null=True, verbose_name="Matn")
+    image = models.ImageField(upload_to='messages/images/', blank=True, null=True, verbose_name="Rasm")
+    video = models.FileField(upload_to='messages/videos/', blank=True, null=True, verbose_name="Video")
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"{self.sender_name}: {self.text[:50] if self.text else self.message_type}"
+    
+    class Meta:
+        verbose_name = "Guruh xabari"
+        verbose_name_plural = "Guruh xabarlari"
+        ordering = ['-created_at']

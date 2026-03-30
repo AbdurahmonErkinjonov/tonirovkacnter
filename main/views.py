@@ -12,6 +12,7 @@ from .decorators import admin_required, worker_required
 from datetime import datetime, timedelta, date
 from django.http import JsonResponse, HttpResponseBadRequest
 from .models import Worker
+from django.contrib.auth.decorators import login_required
 
 
 # -------------------- Authentication --------------------
@@ -334,6 +335,7 @@ def worker_dashboard(request):
         'today_session': today_session,
         'month_fines': month_fines,
         'month_bonuses': month_bonuses,
+        'month_sessions': month_sessions,  # QO'SHILDI - jarimalar jadvali uchun
         'net_salary': net_salary,
         'remaining_debt': worker.remaining_debt(),
         'recent_works': WorkDone.objects.filter(
@@ -830,47 +832,77 @@ from datetime import datetime, timedelta
 
 @admin_required
 def attendance_list(request):
+    """Ishchilarning oylik davomatini ko'rsatish"""
     from datetime import datetime, timedelta, date
     
+    # Tanlangan oy va yil (default: joriy oy)
     today = date.today()
-    week_start = today - timedelta(days=today.weekday())
-    week_end = week_start + timedelta(days=6)
+    selected_year = request.GET.get('year', today.year)
+    selected_month = request.GET.get('month', today.month)
     
-    weekdays = ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba', 'Yakshanba']
+    try:
+        selected_year = int(selected_year)
+        selected_month = int(selected_month)
+    except:
+        selected_year = today.year
+        selected_month = today.month
     
-    week_dates = []
-    for i in range(7):
-        week_dates.append(week_start + timedelta(days=i))
+    # Oy boshi va oxiri
+    month_start = date(selected_year, selected_month, 1)
+    if selected_month == 12:
+        month_end = date(selected_year + 1, 1, 1) - timedelta(days=1)
+    else:
+        month_end = date(selected_year, selected_month + 1, 1) - timedelta(days=1)
     
+    # Oy kunlari
+    days_in_month = []
+    for i in range((month_end - month_start).days + 1):
+        current_date = month_start + timedelta(days=i)
+        days_in_month.append(current_date)
+    
+    # Barcha ishchilar
     workers = Worker.objects.all()
     
+    # Har bir ishchi uchun oylik davomat ma'lumotlari
     attendance_data = []
     for worker in workers:
         worker_data = {
             'worker': worker,
             'days': []
         }
-        for day_date in week_dates:  # 'date' o'rniga 'day_date' ishlatildi
+        for day_date in days_in_month:
             session = WorkSession.objects.filter(
                 worker=worker,
                 check_in__date=day_date
             ).first()
             worker_data['days'].append({
                 'date': day_date,
-                'weekday': weekdays[day_date.weekday()],
-                'check_in': session.check_in if session else None,
-                'check_out': session.check_out if session else None,
+                'weekday': day_date.strftime('%A'),
+                'check_in': session.check_in.strftime('%H:%M') if session and session.check_in else None,
+                'check_out': session.check_out.strftime('%H:%M') if session and session.check_out else None,
                 'session_id': session.id if session else None,
                 'has_session': session is not None
             })
         attendance_data.append(worker_data)
     
+    # Yillar va oylar ro'yxati
+    years = range(2020, date.today().year + 2)
+    months = [
+        (1, 'Yanvar'), (2, 'Fevral'), (3, 'Mart'), (4, 'Aprel'),
+        (5, 'May'), (6, 'Iyun'), (7, 'Iyul'), (8, 'Avgust'),
+        (9, 'Sentabr'), (10, 'Oktabr'), (11, 'Noyabr'), (12, 'Dekabr')
+    ]
+    
     context = {
         'attendance_data': attendance_data,
-        'week_dates': week_dates,
-        'weekdays': weekdays,
-        'week_start': week_start,
-        'week_end': week_end,
+        'days_in_month': days_in_month,
+        'year': selected_year,
+        'month': selected_month,
+        'years': years,
+        'months': months,
+        'month_name': dict(months)[selected_month],
+        'month_start': month_start,
+        'month_end': month_end,
     }
     return render(request, 'admin_panel/attendance_list.html', context)
 
@@ -1111,6 +1143,7 @@ def worker_add_car_work(request, car_id):
                 'overtime_bonus': 0
             }
         )
+        
         
         # Checkbox bilan tanlangan qismlar
         selected_part_ids = request.POST.getlist('selected_parts[]')
@@ -1738,3 +1771,257 @@ def work_history(request):
         'total_amount': sum(w['total_price'] for w in work_list if w['total_price']),
     }
     return render(request, 'admin_panel/work_history.html', context)
+
+
+from django.http import JsonResponse
+
+@admin_required
+def get_workers_data(request):
+    """Barcha ishchilarning ma'lumotlarini JSON formatda qaytarish"""
+    workers = Worker.objects.all()
+    
+    data = []
+    for worker in workers:
+        # Bugungi seans ma'lumotlari
+        today_session = WorkSession.objects.filter(
+            worker=worker, 
+            check_in__date=date.today()
+        ).first()
+        
+        data.append({
+            'id': worker.id,
+            'full_name': worker.full_name,
+            'check_in': today_session.check_in.strftime('%H:%M') if today_session and today_session.check_in else None,
+            'check_out': today_session.check_out.strftime('%H:%M') if today_session and today_session.check_out else None,
+            'total_fines': float(worker.total_fines),
+            'total_bonuses': float(worker.total_bonuses),
+            'net_salary': float(worker.net_salary()),
+        })
+    
+    return JsonResponse({'workers': data})
+
+
+@admin_required
+def get_worker_works(request, worker_id):
+    """Ishchining bajargan ishlarini JSON formatda qaytarish"""
+    worker = get_object_or_404(Worker, id=worker_id)
+    
+    works = CarWork.objects.filter(worker=worker, is_confirmed=True).order_by('-work_date')
+    
+    works_data = []
+    for work in works:
+        parts_list = []
+        for part in work.completed_parts.all():
+            parts_list.append(part.part.name)
+        
+        works_data.append({
+            'date': work.work_date.strftime('%d.%m.%Y'),
+            'car': work.car.name,
+            'parts': ', '.join(parts_list) if parts_list else '-',
+            'total_price': float(work.total_price)
+        })
+    return JsonResponse({'works': works_data})
+ 
+from django.http import JsonResponse
+from datetime import date, timedelta
+
+@admin_required
+def get_workers_list(request):
+    """Barcha ishchilarning ro'yxatini qaytarish"""
+    workers = Worker.objects.all().values('id', 'full_name')
+    return JsonResponse({'workers': list(workers)})
+
+
+@admin_required
+def get_worker_details(request, worker_id):
+    """Ishchining umumiy ma'lumotlarini qaytarish"""
+    worker = get_object_or_404(Worker, id=worker_id)
+    
+    # Ishchi ishlagan yillar
+    work_years = CarWork.objects.filter(worker=worker, is_confirmed=True).dates('work_date', 'year')
+    session_years = WorkSession.objects.filter(worker=worker).dates('check_in', 'year')
+    
+    years = set()
+    for y in work_years:
+        years.add(y.year)
+    for y in session_years:
+        years.add(y.year)
+    
+    years = sorted(list(years))
+    if not years:
+        years = [date.today().year]
+    
+    data = {
+        'id': worker.id,
+        'full_name': worker.full_name,
+        'total_fines': float(worker.total_fines),
+        'total_bonuses': float(worker.total_bonuses),
+        'net_salary': float(worker.net_salary()),
+        'total_paid': float(worker.total_paid),
+        'years': years
+    }
+    return JsonResponse(data)
+
+
+@admin_required
+def get_worker_monthly_data(request, worker_id):
+    """Ishchining oylik ma'lumotlarini qaytarish"""
+    worker = get_object_or_404(Worker, id=worker_id)
+    year = request.GET.get('year', date.today().year)
+    
+    try:
+        year = int(year)
+    except:
+        year = date.today().year
+    
+    months_data = []
+    
+    for month in range(1, 13):
+        month_start = date(year, month, 1)
+        if month == 12:
+            month_end = date(year + 1, 1, 1) - timedelta(days=1)
+        else:
+            month_end = date(year, month + 1, 1) - timedelta(days=1)
+        
+        # Davomat ma'lumotlari
+        sessions = WorkSession.objects.filter(
+            worker=worker,
+            check_in__date__gte=month_start,
+            check_in__date__lte=month_end
+        ).order_by('-check_in')
+        
+        sessions_data = []
+        for session in sessions:
+            sessions_data.append({
+                'date': session.check_in.strftime('%d.%m.%Y'),
+                'check_in': session.check_in.strftime('%H:%M') if session.check_in else None,
+                'check_out': session.check_out.strftime('%H:%M') if session.check_out else None,
+                'fine': float(session.fine_amount),
+                'bonus': float(session.bonus_amount)
+            })
+        
+        # Bajarilgan ishlar
+        works = CarWork.objects.filter(
+            worker=worker,
+            work_date__gte=month_start,
+            work_date__lte=month_end,
+            is_confirmed=True
+        ).order_by('-work_date')
+        
+        works_data = []
+        for work in works:
+            parts_done = []
+            parts_uvol = []
+            for part in work.completed_parts.all():
+                parts_done.append(part.part.name)
+            
+            works_data.append({
+                'date': work.work_date.strftime('%d.%m.%Y'),
+                'car': work.car.name,
+                'parts_done': ', '.join(parts_done) if parts_done else '-',
+                'parts_uvol': ', '.join(parts_uvol) if parts_uvol else '-',
+                'total_price': float(work.total_price)
+            })
+        
+        # Agar ma'lumot bo'lmasa, qo'shmaymiz (ixtiyoriy)
+        if sessions_data or works_data:
+            months_data.append({
+                'month_num': month,
+                'sessions': sessions_data,
+                'works': works_data,
+                'work_count': len(works_data)
+            })
+    
+    return JsonResponse({'months': months_data})
+
+
+
+
+from django.core.paginator import Paginator
+
+@login_required
+def messenger(request):
+    """Messenger sahifasi - guruh chat"""
+    # Barcha xabarlarni olish
+    messages = GroupMessage.objects.all().order_by('-created_at')
+    
+    # Pagination (har bir sahifada 20 ta xabar)
+    paginator = Paginator(messages, 20)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+    
+    # Xabar yuborish
+    if request.method == 'POST':
+        form = GroupMessageForm(request.POST, request.FILES)
+        if form.is_valid():
+            message = form.save(commit=False)
+            
+            if request.user.is_staff:
+                message.is_admin = True
+                message.sender_name = f"Admin: {request.user.username}"
+            else:
+                message.is_admin = False
+                message.sender_name = request.user.worker.full_name
+                message.sender = request.user.worker
+            
+            message.save()
+            
+            # Qayta sahifaga yo'naltirish
+            return redirect('messenger')
+    else:
+        form = GroupMessageForm()
+    
+    context = {
+        'page_obj': page_obj,
+        'form': form,
+        'is_admin': request.user.is_staff,
+        'worker': getattr(request.user, 'worker', None)
+    }
+    return render(request, 'messenger.html', context)
+
+
+@login_required
+def messenger_delete_message(request, message_id):
+    """Xabarni o'chirish (faqat admin uchun)"""
+    if not request.user.is_staff:
+        messages.error(request, "Faqat admin xabarlarni o'chira oladi!")
+        return redirect('messenger')
+    
+    message = get_object_or_404(GroupMessage, id=message_id)
+    # Faylni o'chirish
+    if message.image:
+        message.image.delete()
+    if message.video:
+        message.video.delete()
+    message.delete()
+    
+    messages.success(request, "Xabar o'chirildi!")
+    return redirect('messenger')
+@admin_required
+def get_present_workers(request):
+    """Hozir ishda bo'lgan ishchilarni qaytarish"""
+    from datetime import datetime
+    
+    today = date.today()
+    present_sessions = WorkSession.objects.filter(
+        check_in__date=today,
+        check_out__isnull=True
+    ).select_related('worker')
+    
+    workers_data = []
+    for session in present_sessions:
+        # Ish vaqtini hisoblash
+        check_in = session.check_in
+        now = datetime.now()
+        duration = now - check_in
+        hours = duration.seconds // 3600
+        minutes = (duration.seconds % 3600) // 60
+        
+        workers_data.append({
+            'id': session.worker.id,
+            'full_name': session.worker.full_name,
+            'check_in': check_in.strftime('%H:%M'),
+            'work_duration': f"{hours} soat {minutes} daqiqa"
+        })
+    
+    return JsonResponse({'workers': workers_data})

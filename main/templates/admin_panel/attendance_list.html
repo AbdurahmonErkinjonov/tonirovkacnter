@@ -5,48 +5,90 @@
 {% block content %}
 <div class="row mb-4">
     <div class="col-12">
-        <div class="card bg-gradient">
+        <div class="card" style="background: linear-gradient(135deg, #dc3545, #b71c1c);">
             <div class="card-body text-center py-4">
                 <h2 class="text-white mb-0">
                     <i class="fas fa-calendar-alt"></i> Davomat vaqtini o'zgartirish
                 </h2>
                 <p class="text-white-50 mt-2 mb-0">
-                    Hafta: {{ week_start|date:"d-m-Y" }} - {{ week_end|date:"d-m-Y" }}
+                    {{ month_name }} {{ year }} oyi
                 </p>
             </div>
         </div>
     </div>
 </div>
 
+<!-- Filtr form -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card" style="border: 2px solid #dc3545;">
+            <div class="card-header" style="background-color: #dc3545; color: white;">
+                <h5 class="mb-0"><i class="fas fa-filter"></i> Filtrlash</h5>
+            </div>
+            <div class="card-body">
+                <form method="get" class="row g-3">
+                    <div class="col-md-5">
+                        <label class="form-label" style="color: #dc3545;">Yil</label>
+                        <select name="year" class="form-control" style="border: 2px solid #dc3545;">
+                            {% for y in years %}
+                            <option value="{{ y }}" {% if year == y %}selected{% endif %}>{{ y }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label" style="color: #dc3545;">Oy</label>
+                        <select name="month" class="form-control" style="border: 2px solid #dc3545;">
+                            {% for m_num, m_name in months %}
+                            <option value="{{ m_num }}" {% if month == m_num %}selected{% endif %}>{{ m_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn w-100" style="background-color: #dc3545; color: white;">
+                            <i class="fas fa-search"></i> Ko'rish
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Davomat jadvali -->
 <div class="row">
     <div class="col-12">
-        <div class="card">
-            <div class="card-header bg-primary text-white">
+        <div class="card" style="border: 2px solid #dc3545;">
+            <div class="card-header" style="background-color: #dc3545; color: white;">
                 <h5 class="mb-0"><i class="fas fa-users"></i> Ishchilar davomati</h5>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead class="table-dark">
+                    <table class="table table-bordered" style="background-color: #fff3f3;">
+                        <thead style="background-color: #dc3545; color: white;">
                             <tr>
-                                <th>Ishchi</th>
-                                {% for weekday in weekdays %}
-                                <th class="text-center">{{ weekday }}</th>
+                                <th style="min-width: 120px;">Ishchi</th>
+                                {% for day in days_in_month %}
+                                <th class="text-center" style="min-width: 100px;">
+                                    {{ day|date:"d.m" }}<br>
+                                    <small>{{ day|date:"D" }}</small>
+                                    <br><span style="font-size: 10px;">{{ day|date:"Y-m-d" }}</span>
+                                </th>
                                 {% endfor %}
-                            </thead>
+                            </tr>
+                        </thead>
                         <tbody>
                             {% for data in attendance_data %}
                             <tr>
-                                <td><strong>{{ data.worker.full_name }}</strong></td>
+                                <td><strong style="color: #dc3545;">{{ data.worker.full_name }}</strong></td>
                                 {% for day in data.days %}
                                 <td class="text-center">
                                     {% if day.has_session %}
                                         <div class="mb-1">
-                                            <small class="text-success">Kelgan: {{ day.check_in|date:"H:i" }}</small>
+                                            <small class="text-success">Kelgan: {{ day.check_in }}</small>
                                         </div>
                                         {% if day.check_out %}
                                         <div>
-                                            <small class="text-danger">Ketgan: {{ day.check_out|date:"H:i" }}</small>
+                                            <small class="text-danger">Ketgan: {{ day.check_out }}</small>
                                         </div>
                                         {% endif %}
                                         <a href="{% url 'attendance_edit' day.session_id %}" class="btn btn-sm btn-warning mt-2">
@@ -63,7 +105,7 @@
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="8" class="text-center">Ishchilar mavjud emas</td>
+                                <td colspan="{{ days_in_month|length|add:1 }}" class="text-center">Ishchilar mavjud emas</td>
                             </tr>
                             {% endfor %}
                         </tbody>

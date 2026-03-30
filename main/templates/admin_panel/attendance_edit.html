@@ -5,12 +5,13 @@
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-6">
-        <div class="card animate__animated animate__fadeInUp">
+        <div class="card">
             <div class="card-header bg-warning text-dark">
-                <h4 class="mb-0"><i class="fas fa-edit"></i> Davomatni tahrirlash</h4>
+                <h4><i class="fas fa-edit"></i> Davomatni tahrirlash</h4>
             </div>
             <div class="card-body">
                 <h5 class="mb-4">{{ worker.full_name }}</h5>
+                <p><strong>Sana:</strong> {{ check_in|date:"d.m.Y" }}</p>
                 
                 <form method="post">
                     {% csrf_token %}
@@ -45,12 +46,8 @@
                     </div>
                     
                     <div class="text-end">
-                        <a href="{% url 'attendance_list' %}" class="btn btn-secondary">
-                            <i class="fas fa-times"></i> Bekor qilish
-                        </a>
-                        <button type="submit" class="btn btn-warning">
-                            <i class="fas fa-save"></i> Saqlash
-                        </button>
+                        <a href="{% url 'attendance_list' %}" class="btn btn-secondary">Bekor qilish</a>
+                        <button type="submit" class="btn btn-warning">Saqlash</button>
                     </div>
                 </form>
             </div>

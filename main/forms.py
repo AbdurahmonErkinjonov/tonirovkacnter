@@ -327,3 +327,15 @@ class CarWorkForm(forms.Form):
         label="Umumiy narx (so'm)",
         widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'})
     )   
+    
+    
+    
+class GroupMessageForm(forms.ModelForm):
+    class Meta:
+        model = GroupMessage
+        fields = ['text', 'image', 'video']
+        widgets = {
+            'text': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Xabar yozing...'}),
+            'image': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
+            'video': forms.FileInput(attrs={'class': 'form-control', 'accept': 'video/*'}),
+        }
