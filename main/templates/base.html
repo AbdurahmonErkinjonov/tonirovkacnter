@@ -1,4 +1,6 @@
+{% load static %}
 <!DOCTYPE html>
+
 <html lang="uz">
 <head>
     <meta charset="UTF-8">
@@ -15,8 +17,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
     <!-- AOS Animation -->
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
-    
-    {% load static %}
+    <script src="{% static 'js/money-format.js' %}"></script>
     <style>
         :root {
             --primary: #d32f2f;
@@ -572,6 +573,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     
+    <!-- Money format JavaScript -->
+    <script src="{% static 'js/money-format.js' %}"></script>
+    
+
     <script>
         // AOS Initialization
         AOS.init({

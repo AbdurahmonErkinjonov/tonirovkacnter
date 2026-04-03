@@ -48,4 +48,7 @@ urlpatterns = [
     #chat
     path('messenger/', views.messenger, name='messenger'),
     path('messenger/delete/<int:message_id>/', views.messenger_delete_message, name='messenger_delete_message'),
+    path('admin-panel/discipline-ranking/', views.discipline_ranking, name='discipline_ranking'),
+    path('admin-panel/reset-discipline-stats/', views.reset_discipline_stats, name='reset_discipline_stats'),
+    path('worker-panel/discipline-ranking/', views.worker_discipline_ranking, name='worker_discipline_ranking'),
 ]

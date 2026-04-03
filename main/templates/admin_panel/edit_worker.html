@@ -37,6 +37,15 @@
                             <label for="{{ form.overtime_bonus.id_for_label }}" class="form-label">1 soat qo'shimcha bonus (so'm)</label>
                             {{ form.overtime_bonus }}
                         </div>
+                    <!-- 3 soatlik bonus -->
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="{{ form.three_hour_bonus_amount.id_for_label }}" class="form-label">3 soatdan keyin bonus (so'm)</label>
+                                {{ form.three_hour_bonus_amount }}
+                                <div class="form-text">0 bo'lsa bonus qo'shilmaydi</div>
+                            </div>
+                        </div>
+
                     </div>
 
                     <!-- Ish kunlari checkboxlari -->

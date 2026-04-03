@@ -70,15 +70,29 @@ def workers_list(request):
 @admin_required
 def edit_worker(request, worker_id):
     worker = get_object_or_404(Worker, id=worker_id)
+    
     if request.method == 'POST':
         form = WorkerEditForm(request.POST, instance=worker)
         if form.is_valid():
+            # Pul maydonlarini formatlash
+            worker.late_fine = parse_money(request.POST.get('late_fine'))
+            worker.overtime_bonus = parse_money(request.POST.get('overtime_bonus'))
+            worker.three_hour_bonus_amount = parse_money(request.POST.get('three_hour_bonus_amount'))
+            
             form.save()
             messages.success(request, f"{worker.full_name} ma'lumotlari yangilandi!")
             return redirect('workers_list')
     else:
-        form = WorkerEditForm(instance=worker)
+        # Ko'rsatish uchun formatlash
+        initial_data = {
+            'late_fine': format_money(worker.late_fine),
+            'overtime_bonus': format_money(worker.overtime_bonus),
+            'three_hour_bonus_amount': format_money(worker.three_hour_bonus_amount),
+        }
+        form = WorkerEditForm(instance=worker, initial=initial_data)
+    
     return render(request, 'admin_panel/edit_worker.html', {'form': form, 'worker': worker})
+
 
 @admin_required
 def add_worker(request):
@@ -94,6 +108,12 @@ def add_worker(request):
                 user = User.objects.create_user(username=username, password=password)
                 worker = form.save(commit=False)
                 worker.user = user
+                
+                # Pul maydonlarini formatlash
+                worker.late_fine = parse_money(request.POST.get('late_fine'))
+                worker.overtime_bonus = parse_money(request.POST.get('overtime_bonus'))
+                worker.three_hour_bonus_amount = parse_money(request.POST.get('three_hour_bonus_amount'))
+                
                 worker.save()
                 messages.success(request, f"Ishchi {worker.full_name} muvaffaqiyatli qo'shildi!")
                 return redirect('admin_dashboard')
@@ -101,6 +121,7 @@ def add_worker(request):
         form = WorkerForm()
     
     return render(request, 'admin_panel/add_worker.html', {'form': form})
+
 
 @admin_required
 def add_holiday(request):
@@ -373,6 +394,16 @@ def check_in(request):
             messages.error(request, f"Siz ish joyidan {distance:.0f} metr uzoqdasiz!")
             return redirect('worker_dashboard')
         
+        
+            session.save()
+    
+        # Kunlik intizom balini hisoblash
+        daily = calculate_daily_discipline(worker, today)
+        if daily:
+            update_total_discipline_score(worker)
+    
+
+        
         # Kechikishni hisoblash
         now = timezone.now()
         current_time = now.time()
@@ -440,6 +471,17 @@ def check_out(request):
         if not session or session.check_out:
             messages.error(request, "Xatolik yuz berdi!")
             return redirect('worker_dashboard')
+        
+        
+        
+        session.save()
+    
+        # Kunlik intizom balini hisoblash
+        daily = calculate_daily_discipline(worker, today)
+        if daily:
+            update_total_discipline_score(worker)
+    
+
         
         lat = float(request.POST.get('lat', 0))
         lng = float(request.POST.get('lng', 0))
@@ -2025,3 +2067,328 @@ def get_present_workers(request):
         })
     
     return JsonResponse({'workers': workers_data})
+
+
+def parse_money(value):
+    """Formatlangan pul qiymatini raqamga o'girish (minglik)"""
+    if not value:
+        return 0
+    # String bo'lmasa, qaytarish
+    if not isinstance(value, str):
+        return float(value)
+    # Bo'shliqlarni olib tashlash
+    cleaned = value.replace(' ', '')
+    # Vergulni nuqtaga o'zgartirish
+    cleaned = cleaned.replace(',', '.')
+    try:
+        num = float(cleaned)
+        # Agar 1000 dan katta bo'lsa (formatlangan bo'lsa)
+        if num > 1000:
+            return num / 1000
+        return num
+    except:
+        return 0
+
+
+def format_money(value):
+    """Raqamni formatlangan pul ko'rinishiga o'girish"""
+    if not value:
+        return 0
+    num = float(value) * 1000
+    return int(num)
+
+
+from datetime import date, timedelta
+from django.db.models import Q, Count, Sum, Avg
+from django.utils import timezone
+
+def calculate_discipline_scores(year=None, month=None):
+    """Ishchilarning intizom ballarini hisoblash"""
+    if year is None:
+        year = date.today().year
+    if month is None:
+        month = date.today().month
+    
+    month_start = date(year, month, 1)
+    if month == 12:
+        month_end = date(year + 1, 1, 1) - timedelta(days=1)
+    else:
+        month_end = date(year, month + 1, 1) - timedelta(days=1)
+    
+    workers = Worker.objects.all()
+    scores = []
+    
+    for worker in workers:
+        # Oy ichidagi ish seanslari
+        work_sessions = WorkSession.objects.filter(
+            worker=worker,
+            check_in__date__gte=month_start,
+            check_in__date__lte=month_end
+        )
+        
+        total_days = work_sessions.count()
+        if total_days == 0:
+            scores.append({
+                'worker': worker,
+                'punctuality_score': 0,
+                'overtime_score': 0,
+                'attendance_score': 0,
+                'total_score': 0,
+                'rank': 0
+            })
+            continue
+        
+        # 1. Vaqtida kelish bali (40%)
+        on_time_count = work_sessions.filter(is_late=False).count()
+        punctuality_score = (on_time_count / total_days) * 40
+        
+        # 2. Qo'shimcha ish bali (30%)
+        overtime_sessions = work_sessions.filter(overtime_minutes__gte=60)
+        overtime_ratio = min(overtime_sessions.count() / total_days, 1) if total_days > 0 else 0
+        overtime_score = overtime_ratio * 30
+        
+        # 3. Kelgan kunlar bali (30%)
+        working_days_count = 0
+        current_date = month_start
+        while current_date <= month_end:
+            if worker.is_working_day(current_date):
+                working_days_count += 1
+            current_date += timedelta(days=1)
+        
+        attendance_ratio = min(total_days / working_days_count, 1) if working_days_count > 0 else 0
+        attendance_score = attendance_ratio * 30
+        
+        total_score = punctuality_score + overtime_score + attendance_score
+        
+        # Saqlash yoki yangilash
+        discipline, created = WorkerDiscipline.objects.update_or_create(
+            worker=worker,
+            month=month,
+            year=year,
+            defaults={
+                'punctuality_score': round(punctuality_score, 2),
+                'overtime_score': round(overtime_score, 2),
+                'attendance_score': round(attendance_score, 2),
+                'total_score': round(total_score, 2),
+            }
+        )
+        
+        scores.append({
+            'worker': worker,
+            'discipline': discipline,
+            'punctuality_score': round(punctuality_score, 2),
+            'overtime_score': round(overtime_score, 2),
+            'attendance_score': round(attendance_score, 2),
+            'total_score': round(total_score, 2),
+            'rank': 0
+        })
+    
+    # Reytingni belgilash (total_score bo'yicha tartiblash)
+    scores.sort(key=lambda x: x['total_score'], reverse=True)
+    for idx, score in enumerate(scores, 1):
+        score['rank'] = idx
+        if score.get('discipline'):
+            score['discipline'].rank = idx
+            score['discipline'].save()
+    
+    return scores
+
+
+@admin_required
+def discipline_ranking(request):
+    """Intizom reytingi sahifasi (admin panel)"""
+    # Barcha ishchilarni jami bal bo'yicha tartiblash
+    workers = Worker.objects.all().order_by('-total_discipline_score')
+    
+    scores = []
+    for idx, worker in enumerate(workers, 1):
+        scores.append({
+            'rank': idx,
+            'worker': worker,
+            'total_score': worker.total_discipline_score,
+        })
+    
+    context = {
+        'scores': scores,
+    }
+    return render(request, 'admin_panel/discipline_ranking.html', context)
+
+
+@worker_required
+def worker_discipline_ranking(request):
+    """Worker panel uchun intizom reytingi"""
+    worker = request.user.worker
+    
+    # Barcha ishchilarni jami bal bo'yicha tartiblash
+    all_workers = Worker.objects.all().order_by('-total_discipline_score')
+    
+    # Workerning o'z reytingi
+    my_rank = None
+    for idx, w in enumerate(all_workers, 1):
+        if w.id == worker.id:
+            my_rank = idx
+            break
+    
+    # Top 10
+    top_10 = []
+    for idx, w in enumerate(all_workers[:10], 1):
+        top_10.append({
+            'rank': idx,
+            'worker': w,
+            'total_score': w.total_discipline_score,
+        })
+    
+    context = {
+        'my_rank': my_rank,
+        'my_score': worker.total_discipline_score,
+        'top_10': top_10,
+    }
+    return render(request, 'worker_panel/discipline_ranking.html', context)
+
+
+@admin_required
+def reset_discipline_stats(request):
+    """Intizom statistikasini tozalash"""
+    if request.method == 'POST':
+        DailyDiscipline.objects.all().delete()
+        for worker in Worker.objects.all():
+            worker.total_discipline_score = 0
+            worker.save()
+        messages.success(request, "Barcha intizom statistikasi tozalandi!")
+        return redirect('discipline_ranking')
+    
+    return render(request, 'admin_panel/reset_discipline_confirm.html')
+
+@admin_required
+def reset_discipline_stats(request):
+    """Intizom statistikasini tozalash"""
+    if request.method == 'POST':
+        WorkerDiscipline.objects.all().delete()
+        messages.success(request, "Barcha intizom statistikasi tozalandi!")
+        return redirect('discipline_ranking')
+    
+    return render(request, 'admin_panel/reset_discipline_confirm.html')
+
+
+@worker_required
+def worker_discipline_ranking(request):
+    """Worker panel uchun intizom reytingi"""
+    worker = request.user.worker
+    today = date.today()
+    
+    # Joriy oy uchun reyting
+    current_scores = calculate_discipline_scores(today.year, today.month)
+    
+    # Workerning o'z reytingi
+    my_rank = None
+    my_score = None
+    for score in current_scores:
+        if score['worker'].id == worker.id:
+            my_rank = score.get('rank', 0)
+            my_score = score
+            break
+    
+    # Top 10
+    top_10 = current_scores[:10]
+    
+    context = {
+        'my_rank': my_rank,
+        'my_score': my_score,
+        'top_10': top_10,
+        'year': today.year,
+        'month': today.month,
+        'month_name': ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'][today.month-1],
+    }
+    return render(request, 'worker_panel/discipline_ranking.html', context)
+
+
+def calculate_daily_discipline(worker, date_obj):
+    """Kunlik intizom balini hisoblash"""
+    from datetime import datetime
+    
+    # Bugungi seansni olish
+    session = WorkSession.objects.filter(
+        worker=worker,
+        check_in__date=date_obj
+    ).first()
+    
+    if not session:
+        # Kelmagan bo'lsa, bal qo'shilmaydi
+        return None
+    
+    total_score = 0
+    attendance_score = 0
+    punctuality_score = 0
+    overtime_score = 0
+    
+    # 1. Kelganlik bali (maks 8 ball)
+    attendance_score = 8
+    total_score += attendance_score
+    
+    # 2. Vaqtida kelish bali (maks 10 ball)
+    # Ish kunining boshlanish vaqtini olish
+    weekday = date_obj.weekday()
+    start_time = getattr(worker, ['monday_start', 'tuesday_start', 'wednesday_start', 
+                                  'thursday_start', 'friday_start', 'saturday_start', 'sunday_start'][weekday])
+    
+    check_in_time = session.check_in.time()
+    
+    if check_in_time <= start_time:
+        # Erta yoki vaqtida kelgan
+        punctuality_score = 10
+    else:
+        # Kechikkan bo'lsa, kechikish vaqtiga qarab bal kamayadi
+        late_minutes = (datetime.combine(date_obj, check_in_time) - datetime.combine(date_obj, start_time)).seconds // 60
+        if late_minutes <= 5:
+            punctuality_score = 8
+        elif late_minutes <= 10:
+            punctuality_score = 5
+        elif late_minutes <= 20:
+            punctuality_score = 3
+        elif late_minutes <= 30:
+            punctuality_score = 1
+        else:
+            punctuality_score = 0
+    
+    total_score += punctuality_score
+    
+    # 3. Qo'shimcha ish bali (maks 8 ball)
+    if session.check_out:
+        end_time = getattr(worker, ['monday_end', 'tuesday_end', 'wednesday_end', 
+                                    'thursday_end', 'friday_end', 'saturday_end', 'sunday_end'][weekday])
+        check_out_time = session.check_out.time()
+        
+        if check_out_time > end_time:
+            overtime_minutes = (datetime.combine(date_obj, check_out_time) - datetime.combine(date_obj, end_time)).seconds // 60
+            if overtime_minutes >= 60:
+                overtime_score = 8
+            elif overtime_minutes >= 30:
+                overtime_score = 5
+            elif overtime_minutes >= 15:
+                overtime_score = 3
+            else:
+                overtime_score = 1
+    
+    total_score += overtime_score
+    
+    # Saqlash yoki yangilash
+    daily, created = DailyDiscipline.objects.update_or_create(
+        worker=worker,
+        date=date_obj,
+        defaults={
+            'attendance_score': attendance_score,
+            'punctuality_score': punctuality_score,
+            'overtime_score': overtime_score,
+            'total_score': total_score,
+        }
+    )
+    
+    return daily
+
+
+def update_total_discipline_score(worker):
+    """Ishchining jami intizom balini yangilash"""
+    total = DailyDiscipline.objects.filter(worker=worker).aggregate(Sum('total_score'))['total_score__sum'] or 0
+    worker.total_discipline_score = total
+    worker.save()
+    return total

@@ -14,14 +14,23 @@ class WorkerForm(forms.ModelForm):
     saturday_working = forms.BooleanField(required=False, initial=True, label="Shanba ish kuni", widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}))
     sunday_working = forms.BooleanField(required=False, initial=True, label="Yakshanba ish kuni", widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}))
     
+    three_hour_bonus_amount = forms.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        required=False, 
+        initial=0,
+        label="3 soatdan keyin bonus (so'm)",
+        widget=forms.TextInput(attrs={'class': 'form-control money-input', 'placeholder': 'Masalan: 30 (30 000 so\'m)'})
+    )
+    
     class Meta:
-        model = Worker
+        model = Worker  # BU QATOR MUHIM!
         exclude = ['user', 'current_salary', 'total_fines', 'total_bonuses', 'total_paid']
         widgets = {
             'full_name': forms.TextInput(attrs={'class': 'form-control'}),
             'salary_percent': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
-            'late_fine': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
-            'overtime_bonus': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'late_fine': forms.TextInput(attrs={'class': 'form-control money-input', 'placeholder': 'Masalan: 30 (30 000 so\'m)'}),
+            'overtime_bonus': forms.TextInput(attrs={'class': 'form-control money-input', 'placeholder': 'Masalan: 50 (50 000 so\'m)'}),
             'monday_start': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
             'monday_end': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
             'tuesday_start': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
@@ -37,21 +46,39 @@ class WorkerForm(forms.ModelForm):
             'sunday_start': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
             'sunday_end': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
         }
-        
-        
-        
-        
-    three_hour_bonus_amount = forms.DecimalField(
-        max_digits=10, 
-        decimal_places=2, 
-        required=False, 
-        initial=0,
-        label="3 soatdan keyin bonus (so'm)",
-        widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'})
-)
-        
-        
-        
+    
+    def clean_late_fine(self):
+        value = self.cleaned_data.get('late_fine')
+        if value:
+            if isinstance(value, str):
+                value = value.replace(' ', '')
+                try:
+                    value = float(value)
+                except:
+                    value = 0
+        return value
+    
+    def clean_overtime_bonus(self):
+        value = self.cleaned_data.get('overtime_bonus')
+        if value:
+            if isinstance(value, str):
+                value = value.replace(' ', '')
+                try:
+                    value = float(value)
+                except:
+                    value = 0
+        return value
+    
+    def clean_three_hour_bonus_amount(self):
+        value = self.cleaned_data.get('three_hour_bonus_amount')
+        if value:
+            if isinstance(value, str):
+                value = value.replace(' ', '')
+                try:
+                    value = float(value)
+                except:
+                    value = 0
+        return value
 
 class WorkerEditForm(forms.ModelForm):
     monday_working = forms.BooleanField(required=False, label="Dushanba", widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}))

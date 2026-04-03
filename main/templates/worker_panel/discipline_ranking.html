@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+
+{% block title %}Intizom reytingi{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card" style="background: linear-gradient(135deg, #dc3545, #b71c1c);">
+            <div class="card-body text-center py-4">
+                <h2 class="text-white mb-0">
+                    <i class="fas fa-trophy"></i> Intizom reytingi
+                </h2>
+                <p class="text-white-50 mt-2 mb-0">
+                    Jami to'plangan ballar bo'yicha reyting
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- O'z reytingim -->
+{% if my_rank %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card" style="border: 2px solid #28a745;">
+            <div class="card-header" style="background-color: #28a745; color: white;">
+                <h5 class="mb-0"><i class="fas fa-star"></i> Sizning reytingingiz</h5>
+            </div>
+            <div class="card-body text-center">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>O'rin</h6>
+                        <h2 class="text-primary">#{{ my_rank }}</h2>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Jami ball</h6>
+                        <h2 class="text-danger">{{ my_score|floatformat:0 }} ball</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- TOP 10 -->
+<div class="row">
+    <div class="col-12">
+        <div class="card" style="border: 2px solid #dc3545;">
+            <div class="card-header" style="background-color: #dc3545; color: white;">
+                <h5 class="mb-0"><i class="fas fa-list"></i> TOP 10 reyting</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered" style="background-color: #fff3f3;">
+                        <thead style="background-color: #dc3545; color: white;">
+                            <tr>
+                                <th>O'rin</th>
+                                <th>Ishchi</th>
+                                <th>Jami ball</th>
+                            </thead>
+                        <tbody>
+                            {% for score in top_10 %}
+                            <tr>
+                                <td style="color: #dc3545;">
+                                    {% if forloop.counter == 1 %}
+                                    🥇 1
+                                    {% elif forloop.counter == 2 %}
+                                    🥈 2
+                                    {% elif forloop.counter == 3 %}
+                                    🥉 3
+                                    {% else %}
+                                    {{ forloop.counter }}
+                                    {% endif %}
+                                </td>
+                                <td style="color: #dc3545;"><strong>{{ score.worker.full_name }}</strong></td>
+                                <td style="color: #dc3545;"><strong>{{ score.total_score|floatformat:0 }}</strong> ball</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="text-center">Ma'lumotlar mavjud emas</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-3">
+                    <a href="{% url 'worker_dashboard' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Orqaga
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .table tbody tr td {
+        color: #dc3545 !important;
+    }
+    .table tbody tr td:nth-child(2) {
+        color: #dc3545 !important;
+        font-weight: 700 !important;
+    }
+    .table thead th {
+        color: white !important;
+    }
+    .table tbody tr:hover td {
+        background-color: rgba(220, 53, 69, 0.1);
+    }
+</style>
+{% endblock %}

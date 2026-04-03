@@ -11,7 +11,7 @@ class Worker(models.Model):
     late_fine = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="10 min kechiksa jarima (so'm)")
     overtime_bonus = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="1 soat qo'shimcha bonus (so'm)")
     three_hour_bonus_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="3 soatdan keyin bonus (so'm)")
-    
+    total_discipline_score = models.FloatField(default=0, verbose_name="Jami intizom bali")
     monday_start = models.TimeField(default=time(9, 0))
     monday_end = models.TimeField(default=time(18, 0))
     tuesday_start = models.TimeField(default=time(9, 0))
@@ -418,3 +418,50 @@ class GroupMessage(models.Model):
         verbose_name = "Guruh xabari"
         verbose_name_plural = "Guruh xabarlari"
         ordering = ['-created_at']
+        
+        
+class WorkerDiscipline(models.Model):
+    """Ishchi intizom statistikasi"""
+    worker = models.OneToOneField(Worker, on_delete=models.CASCADE, related_name='discipline')
+    month = models.IntegerField(verbose_name="Oy")
+    year = models.IntegerField(verbose_name="Yil")
+    
+    # Ballar
+    punctuality_score = models.FloatField(default=0, verbose_name="Vaqtida kelish bali (40%)")
+    overtime_score = models.FloatField(default=0, verbose_name="Qo'shimcha ish bali (30%)")
+    attendance_score = models.FloatField(default=0, verbose_name="Kelgan kunlar bali (30%)")
+    total_score = models.FloatField(default=0, verbose_name="Umumiy bal")
+    rank = models.IntegerField(default=0, verbose_name="Reyting")
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"{self.worker.full_name} - {self.month}/{self.year} - {self.total_score}%"
+    
+    class Meta:
+        unique_together = ['worker', 'month', 'year']
+        ordering = ['-total_score', 'rank']
+        
+        
+        
+class DailyDiscipline(models.Model):
+    """Kunlik intizom statistikasi"""
+    worker = models.ForeignKey(Worker, on_delete=models.CASCADE, related_name='daily_disciplines')
+    date = models.DateField(verbose_name="Sana")
+    
+    # Kunlik ballar
+    attendance_score = models.FloatField(default=0, verbose_name="Kelganlik bali (maks 8)")
+    punctuality_score = models.FloatField(default=0, verbose_name="Vaqtida kelish bali (maks 10)")
+    overtime_score = models.FloatField(default=0, verbose_name="Qo'shimcha ish bali (maks 8)")
+    total_score = models.FloatField(default=0, verbose_name="Kunlik umumiy bal")
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"{self.worker.full_name} - {self.date} - {self.total_score} bal"
+    
+    class Meta:
+        unique_together = ['worker', 'date']
+        ordering = ['-date']
